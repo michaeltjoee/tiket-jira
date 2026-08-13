@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "jq -r '.file_path' | xargs pnpm dlx prettier --write"
+      }
+    ]
+  }
+}
