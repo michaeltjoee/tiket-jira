@@ -3,14 +3,41 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
+import { clearBoardCacheAction } from "@/lib/jira/clear-board-cache";
 import type { SprintRef } from "@/lib/jira";
 
 type Props = {
   current: SprintRef;
   recentSprints: SprintRef[];
+  fetchedAt: string;
 };
 
-const SprintControls = ({ current, recentSprints }: Props) => {
+const formatCachedAt = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Cached";
+
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  const today = new Date();
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  if (sameDay) return `Cached ${time}`;
+
+  const day = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+
+  return `Cached ${day} ${time}`;
+};
+
+const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -30,7 +57,8 @@ const SprintControls = ({ current, recentSprints }: Props) => {
   };
 
   const handleRefresh = () => {
-    startTransition(() => {
+    startTransition(async () => {
+      await clearBoardCacheAction();
       router.refresh();
     });
   };
@@ -75,6 +103,9 @@ const SprintControls = ({ current, recentSprints }: Props) => {
       >
         {isPending ? "Loading…" : "Refresh"}
       </button>
+      <span className="cache_hint" title={fetchedAt}>
+        {formatCachedAt(fetchedAt)}
+      </span>
     </div>
   );
 };

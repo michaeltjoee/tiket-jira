@@ -9,6 +9,8 @@ type AgileSprintPage = {
   maxResults: number;
 };
 
+const FORWARD_SPRINT_COUNT = 3;
+
 const fetchBoardSprints = async (states: string): Promise<JiraSprint[]> => {
   const { boardId } = getJiraEnv();
   const collected: JiraSprint[] = [];
@@ -34,20 +36,12 @@ const fetchBoardSprints = async (states: string): Promise<JiraSprint[]> => {
   return collected;
 };
 
-export const listSphinxSprints = async (): Promise<SprintRef[]> => {
-  const sprints = await fetchBoardSprints("active,future,closed");
-  const refs = sprints
-    .map(toSprintRef)
-    .filter((sprint): sprint is SprintRef => sprint !== null)
-    .sort((a, b) => b.number - a.number);
-
-  const byNumber = new Map<number, SprintRef>();
-  for (const sprint of refs) {
-    if (!byNumber.has(sprint.number)) byNumber.set(sprint.number, sprint);
-  }
-
-  return [...byNumber.values()].sort((a, b) => b.number - a.number);
-};
+const syntheticSprint = (number: number, state = "unknown"): SprintRef => ({
+  id: 0,
+  name: sphinxSprintName(number),
+  number,
+  state,
+});
 
 export const resolveActiveSphinxSprint =
   async (): Promise<SprintRef | null> => {
@@ -59,28 +53,26 @@ export const resolveActiveSphinxSprint =
     return sphinx.sort((a, b) => b.number - a.number)[0] ?? null;
   };
 
+/** Active sprint plus the next N numbered Sphinx sprints (synthetic). */
+export const buildRecentSprintWindow = (active: SprintRef): SprintRef[] => {
+  const window: SprintRef[] = [active];
+  for (let offset = 1; offset <= FORWARD_SPRINT_COUNT; offset += 1) {
+    window.push(syntheticSprint(active.number + offset, "future"));
+  }
+  return window;
+};
+
 export const resolveSprint = async (
   sprintNumber?: number,
-): Promise<SprintRef> => {
-  if (sprintNumber !== undefined) {
-    const name = sphinxSprintName(sprintNumber);
-    const listed = await listSphinxSprints();
-    const found = listed.find((sprint) => sprint.number === sprintNumber);
-    if (found) return found;
-    return {
-      id: 0,
-      name,
-      number: sprintNumber,
-      state: "unknown",
-    };
+): Promise<{ sprint: SprintRef; active: SprintRef }> => {
+  const active = await resolveActiveSphinxSprint();
+  if (!active) {
+    throw new Error("No active Sphinx Sprint found on the configured board.");
   }
 
-  const active = await resolveActiveSphinxSprint();
-  if (active) return active;
+  if (sprintNumber === undefined || sprintNumber === active.number) {
+    return { sprint: active, active };
+  }
 
-  const listed = await listSphinxSprints();
-  const fallback = listed[0];
-  if (fallback) return fallback;
-
-  throw new Error("No Sphinx Sprint found on the configured board.");
+  return { sprint: syntheticSprint(sprintNumber), active };
 };

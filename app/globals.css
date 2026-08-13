@@ -185,6 +185,13 @@ select:focus-visible {
   cursor: wait;
 }
 
+.cache_hint {
+  font-family: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--mute);
+}
+
 .column_head,
 .row {
   display: grid;

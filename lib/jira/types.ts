@@ -42,6 +42,8 @@ export type SprintBoardData = {
   parentCount: number;
   subtaskCount: number;
   recentSprints: SprintRef[];
+  /** ISO timestamp when parents/effort were fetched from Jira. */
+  fetchedAt: string;
 };
 
 export type JiraIssueFields = {

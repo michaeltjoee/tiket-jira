@@ -8,7 +8,8 @@ import {
   browseUrl,
 } from "./constants";
 import { compareDateAscEmptyLast, formatDevRangeLabel } from "./format";
-import { listSphinxSprints, resolveSprint } from "./sprints";
+import { getCachedSprintBoard, setCachedSprintBoard } from "./board-cache";
+import { buildRecentSprintWindow, resolveSprint } from "./sprints";
 import type {
   JiraIssue,
   LedgerParent,
@@ -16,7 +17,7 @@ import type {
   SprintBoardData,
 } from "./types";
 
-export { resolveSprint, listSphinxSprints } from "./sprints";
+export { resolveSprint } from "./sprints";
 export { formatEffort } from "./format";
 
 type SearchResponse = {
@@ -127,15 +128,8 @@ const toParent = (
   };
 };
 
-export const loadSprintBoard = async (
-  sprintNumber?: number,
-): Promise<SprintBoardData> => {
-  const [sprint, recentSprints] = await Promise.all([
-    resolveSprint(sprintNumber),
-    listSphinxSprints(),
-  ]);
-
-  const parentIssues = await searchAll(parentsJql(sprint.name), PARENT_FIELDS);
+const fetchBoardBody = async (sprintName: string) => {
+  const parentIssues = await searchAll(parentsJql(sprintName), PARENT_FIELDS);
 
   const childKeys = parentIssues.flatMap(
     (issue) => issue.fields.subtasks?.map((subtask) => subtask.key) ?? [],
@@ -171,11 +165,36 @@ export const loadSprintBoard = async (
   );
 
   return {
-    sprint,
     parents,
     totalEffort,
     parentCount: parents.length,
     subtaskCount,
-    recentSprints: recentSprints.slice(0, 12),
   };
+};
+
+export const loadSprintBoard = async (
+  sprintNumber?: number,
+): Promise<SprintBoardData> => {
+  const { sprint, active } = await resolveSprint(sprintNumber);
+  const recentSprints = buildRecentSprintWindow(active);
+
+  const cached = getCachedSprintBoard(sprint.number);
+  if (cached) {
+    return {
+      ...cached,
+      sprint,
+      recentSprints,
+    };
+  }
+
+  const body = await fetchBoardBody(sprint.name);
+  const data: SprintBoardData = {
+    sprint,
+    recentSprints,
+    fetchedAt: new Date().toISOString(),
+    ...body,
+  };
+
+  setCachedSprintBoard(sprint.number, data);
+  return data;
 };

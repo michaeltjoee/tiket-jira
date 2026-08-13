@@ -122,6 +122,7 @@ const SprintLedger = ({ data }: Props) => {
       <SprintControls
         current={data.sprint}
         recentSprints={data.recentSprints}
+        fetchedAt={data.fetchedAt}
       />
 
       <div className="column_head" aria-hidden="true">
