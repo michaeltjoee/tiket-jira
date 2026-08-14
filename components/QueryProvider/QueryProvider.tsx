@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 
-import { createSprintBoardPersistAdapter } from "@/lib/query/sprint-board";
+import { createSprintBoardPersistAdapter } from "@/lib/query/useSprintBoard";
 
 const QueryProvider = ({ children }: { children: ReactNode }) => {
   const [{ queryClient, persistOptions }] = useState(

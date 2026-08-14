@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import LedgerLoader from "@/components/LedgerLoader";
 import SprintLedger from "@/components/SprintLedger";
 import { parseSprintParam } from "@/lib/jira/parse-sprint";
-import { useSprintBoard } from "@/lib/query/use-sprint-board";
+import { useSprintBoard } from "@/lib/query/useSprintBoard";
 
 const SprintShell = ({ children }: { children: React.ReactNode }) => (
   <div className="shell">

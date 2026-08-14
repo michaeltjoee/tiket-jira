@@ -1,0 +1,44 @@
+---
+description: HTTP query/fetch functions live in lib/services, not lib/query.
+globs: lib/query/**/*.{ts,tsx},lib/services/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Query functions live in `lib/services`
+
+HTTP fetchers and React Query `queryFn` implementations belong in `lib/services/<name>/`. `lib/query` holds query keys, cache merge/ingest, persist, and hooks that *call* those fetchers.
+
+Each service is a folder:
+
+- `index.ts` — the implementation
+- `types.ts` — params, function type, and return type
+
+Re-export those types from `index.ts`. Do not add a `lib/services` barrel. Import the service folder.
+
+```ts
+// ❌ BAD — network I/O next to cache keys
+// lib/query/sprint-board.ts
+export const fetchSprintBoardFromHttp = async (sprintNumber?: number) => {
+  const response = await fetch("/api/sprint-board");
+  return response.json();
+};
+
+// ❌ BAD — nested folder named after the function
+// lib/services/sprintBoard/fetchSprintBoardFromHttp/index.ts
+
+// ✅ GOOD — service folder; types in types.ts, re-exported from index.ts
+// lib/services/sprintBoard/types.ts
+export type FetchSprintBoardParams = { sprintNumber?: number };
+export type SprintBoardData = { /* return type */ };
+export type FetchSprintBoard = (
+  sprintNumber?: FetchSprintBoardParams["sprintNumber"],
+) => Promise<SprintBoardData>;
+
+// lib/services/sprintBoard/index.ts
+export type { FetchSprintBoard, FetchSprintBoardParams, SprintBoardData } from "./types";
+export const fetchSprintBoardFromHttp: FetchSprintBoard = async (sprintNumber) => { /* HTTP */ };
+
+// lib/query/useSprintBoard.ts
+import { fetchSprintBoardFromHttp } from "@/lib/services/sprintBoard";
+import type { SprintBoardData } from "@/lib/services/sprintBoard";
+```

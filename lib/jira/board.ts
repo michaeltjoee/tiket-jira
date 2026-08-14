@@ -11,12 +11,8 @@ import {
 } from "./constants";
 import { compareDateAscEmptyLast, formatDevRangeLabel } from "./format";
 import { buildRecentSprintWindow, resolveSprint } from "./sprints";
-import type {
-  JiraIssue,
-  LedgerParent,
-  LedgerSubtask,
-  SprintBoardData,
-} from "./types";
+import type { JiraIssue, LedgerParent, LedgerSubtask } from "./types";
+import type { SprintBoardData } from "@/lib/services/sprintBoard";
 
 export { resolveSprint } from "./sprints";
 export { formatEffort } from "./format";

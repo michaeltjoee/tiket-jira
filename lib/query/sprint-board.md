@@ -1,5 +1,7 @@
 # Sprint ledger cache
 
+Callers use `useSprintBoard` and `createSprintBoardPersistAdapter` from `lib/query/useSprintBoard.ts`. The HTTP fetcher is `fetchSprintBoardFromHttp` in `lib/services/sprintBoard`. Params, function type, and `SprintBoardData` live in that folder's `types.ts` and are re-exported from `index.ts`.
+
 One persisted React Query document (`["sprint-board"]`): picker + board bodies. Persist (`sprint-board:v1`) is a snapshot of that document, not a second store. The UI always reads the in-memory QueryClient.
 
 In-flight fetches use `["sprint-board-fetch", id]` and are not dehydrated.

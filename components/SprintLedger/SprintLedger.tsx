@@ -8,7 +8,8 @@ import {
   todayIsoDate,
   type DueMark,
 } from "@/lib/jira/format";
-import type { LedgerParent, SprintBoardData } from "@/lib/jira/types";
+import type { LedgerParent } from "@/lib/jira/types";
+import type { SprintBoardData } from "@/lib/services/sprintBoard";
 
 type Props = {
   data: SprintBoardData;

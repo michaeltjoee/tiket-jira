@@ -1,7 +1,8 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 
-import type { SprintBoardData, SprintRef } from "@/lib/jira/types";
+import type { SprintRef } from "@/lib/jira/types";
+import type { SprintBoardData } from "@/lib/services/sprintBoard";
 
 export const MAX_CACHED_BOARDS = 5;
 
@@ -29,10 +30,6 @@ export const SPRINT_BOARD_PERSIST_KEY = "sprint-board:v1";
  */
 export const SPRINT_BOARD_PERSIST_BUSTER = "v3";
 
-export type FetchSprintBoard = (
-  sprintNumber?: number,
-) => Promise<SprintBoardData>;
-
 export type SprintBoardBody = Omit<SprintBoardData, "recentSprints">;
 
 export type SprintBoardPicker = {
@@ -48,31 +45,6 @@ export type SprintLedgerCache = {
 export const EMPTY_SPRINT_LEDGER_CACHE: SprintLedgerCache = {
   picker: null,
   boards: {},
-};
-
-type SprintBoardErrorBody = {
-  error?: string;
-};
-
-export const fetchSprintBoardFromHttp: FetchSprintBoard = async (
-  sprintNumber,
-) => {
-  const url =
-    sprintNumber === undefined
-      ? "/api/sprint-board"
-      : `/api/sprint-board?sprint=${sprintNumber}`;
-
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    const body = (await response
-      .json()
-      .catch(() => ({}))) as SprintBoardErrorBody;
-    throw new Error(
-      body.error ?? `Failed to load sprint board (${response.status})`,
-    );
-  }
-
-  return (await response.json()) as SprintBoardData;
 };
 
 const boardKey = (number: number) => String(number);
@@ -128,6 +100,11 @@ export const mergeSprintLedgerCache = (
   };
 };
 
+/**
+ * Write a fetched board into the persisted ledger query. Merges `data` into the
+ * current cache (or empty) so the picker stays put and the new body is stored
+ * under its sprint number, then pruned to `MAX_CACHED_BOARDS`.
+ */
 export const ingestSprintBoard = (
   queryClient: QueryClient,
   data: SprintBoardData,
@@ -177,6 +154,11 @@ export const makeQueryClient = () =>
 
 let browserQueryClient: QueryClient | undefined;
 
+/**
+ * Server: a new client per call so request caches never leak across users.
+ * Browser: one module singleton so React remounts (Strict Mode, PersistQueryClientProvider)
+ * keep the same in-memory cache instead of discarding it and rehydrating from localStorage.
+ */
 export const getQueryClient = () => {
   if (typeof window === "undefined") {
     return makeQueryClient();
@@ -187,6 +169,11 @@ export const getQueryClient = () => {
   return browserQueryClient;
 };
 
+/**
+ * Persist adapter for PersistQueryClientProvider: dehydrates the sprint ledger
+ * into localStorage under `SPRINT_BOARD_PERSIST_KEY` and restores it on reload.
+ * Storage is omitted on the server — `localStorage` is browser-only.
+ */
 const createSprintBoardPersister = () =>
   createAsyncStoragePersister({
     storage: typeof window === "undefined" ? undefined : window.localStorage,
@@ -219,9 +206,14 @@ export const createSprintBoardPersistAdapter = () => {
   };
 };
 
+/**
+ * Hard-refresh the ledger: cancel in-flight board fetches, drop the
+ * localStorage snapshot, reset the in-memory query to empty, then fetch
+ * and ingest so picker + boards are rebuilt from the network.
+ */
 export const refreshSprintLedgerCache = async (
   queryClient: QueryClient,
-  fetchBoard: FetchSprintBoard,
+  fetchBoard: (sprintNumber?: number) => Promise<SprintBoardData>,
   sprintNumber?: number,
 ) => {
   await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_FETCH_QUERY_KEY });

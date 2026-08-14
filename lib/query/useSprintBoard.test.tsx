@@ -1,11 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SprintBoardData, SprintRef } from "@/lib/jira/types";
+import type { SprintRef } from "@/lib/jira/types";
 import { MAX_CACHED_BOARDS } from "@/lib/query/sprint-board";
-import { createSprintBoardCache } from "@/lib/query/use-sprint-board";
+import { useSprintBoard } from "@/lib/query/useSprintBoard";
+import { fetchSprintBoardFromHttp } from "@/lib/services/sprintBoard";
+import type { SprintBoardData } from "@/lib/services/sprintBoard";
+
+vi.mock("@/lib/services/sprintBoard", () => ({
+  fetchSprintBoardFromHttp: vi.fn(),
+}));
 
 const sprintRef = (number: number, state: string): SprintRef => ({
   id: number,
@@ -47,6 +53,7 @@ const wrapperWith = (queryClient: QueryClient) => {
 const setup = (
   fetchBoard: (sprintNumber?: number) => Promise<SprintBoardData>,
 ) => {
+  vi.mocked(fetchSprintBoardFromHttp).mockImplementation(fetchBoard);
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -59,11 +66,14 @@ const setup = (
       },
     },
   });
-  const { useSprintBoard } = createSprintBoardCache({ fetchBoard });
-  return { queryClient, useSprintBoard };
+  return { queryClient };
 };
 
 describe("useSprintBoard", () => {
+  beforeEach(() => {
+    vi.mocked(fetchSprintBoardFromHttp).mockReset();
+  });
+
   it("seeds the picker once and overlays it onto a later board", async () => {
     const fetchBoard = vi.fn(async (sprintNumber?: number) => {
       if (sprintNumber === 40) {
@@ -71,7 +81,7 @@ describe("useSprintBoard", () => {
       }
       return board(42, [42, 43, 44, 45], 42, "2026-08-14T00:00:00.000Z");
     });
-    const { queryClient, useSprintBoard } = setup(fetchBoard);
+    const { queryClient } = setup(fetchBoard);
     const { result, rerender } = renderHook(
       ({ sprint }: { sprint?: number }) => useSprintBoard(sprint),
       {
@@ -107,7 +117,7 @@ describe("useSprintBoard", () => {
       }
       return board(42, [42, 43, 44, 45], 42, "2026-08-14T00:00:00.000Z");
     });
-    const { queryClient, useSprintBoard } = setup(fetchBoard);
+    const { queryClient } = setup(fetchBoard);
     const { result, rerender } = renderHook(
       ({ sprint }: { sprint?: number }) => useSprintBoard(sprint),
       {
@@ -146,7 +156,7 @@ describe("useSprintBoard", () => {
       .mockResolvedValueOnce(
         board(43, [43, 44, 45, 46], 43, "2026-08-14T00:02:00.000Z"),
       );
-    const { queryClient, useSprintBoard } = setup(fetchBoard);
+    const { queryClient } = setup(fetchBoard);
     const { result } = renderHook(() => useSprintBoard(undefined), {
       wrapper: wrapperWith(queryClient),
     });
@@ -177,7 +187,7 @@ describe("useSprintBoard", () => {
         `2026-08-14T00:${String(offset).padStart(2, "0")}:00.000Z`,
       );
     });
-    const { queryClient, useSprintBoard } = setup(fetchBoard);
+    const { queryClient } = setup(fetchBoard);
     const { result, rerender } = renderHook(
       ({ sprint }: { sprint?: number }) => useSprintBoard(sprint),
       {
