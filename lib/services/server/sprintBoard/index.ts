@@ -7,7 +7,7 @@ import {
 } from "@/lib/services/server/jira";
 import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
 
-export const getDashboardData = async (
+export const loadSprintBoard = async (
   sprintNumber?: number,
 ): Promise<SprintBoardData> => {
   const { sprint, active } = await resolveSprint(sprintNumber);

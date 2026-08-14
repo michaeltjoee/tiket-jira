@@ -20,7 +20,7 @@ Do not add a `lib/services` barrel. Import the service folder.
 
 ```ts
 import { getDashboardData } from "@/lib/services/client/getDashboardData";
-import { getDashboardData } from "@/lib/services/server/getDashboardData";
+import { loadSprintBoard } from "@/lib/services/server/sprintBoard";
 import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
 ```
 
@@ -55,7 +55,7 @@ export const getDashboardData = async (sprintNumber?: number) => {
 // lib/services/getDashboardData/index.ts
 
 // ❌ BAD — type-only caller importing from server
-// import type { SprintBoardData } from "@/lib/services/server/getDashboardData";
+// import type { SprintBoardData } from "@/lib/services/server/sprintBoard";
 
 // ✅ GOOD — shared contract types
 // lib/services/shared/getDashboardData/types.ts
@@ -73,9 +73,9 @@ import "client-only";
 export type { GetDashboardData, GetDashboardDataParams, SprintBoardData } from "@/lib/services/shared/getDashboardData";
 export const getDashboardData: GetDashboardData = async (sprintNumber) => { /* HTTP */ };
 
-// lib/services/server/getDashboardData/index.ts
+// lib/services/server/sprintBoard/index.ts
 import "server-only";
-export const getDashboardData = async (sprintNumber?: number): Promise<SprintBoardData> => { /* Jira */ };
+export const loadSprintBoard = async (sprintNumber?: number): Promise<SprintBoardData> => { /* Jira */ };
 
 // lib/query/useSprintBoard.ts — client caller (function + types from client)
 import { getDashboardData } from "@/lib/services/client/getDashboardData";
@@ -90,7 +90,7 @@ Not every domain needs all three folders. Jira has no `client/` — the browser 
 ```
 lib/services/server/jira/     jiraFetch, credentials, fetchBoardBody, resolveSprint  + import "server-only"
 lib/services/shared/jira/     SprintRef, LedgerParent, format helpers, parseSprintParam
-lib/services/server/getDashboardData/  getDashboardData (calls server/jira)
+lib/services/server/sprintBoard/  loadSprintBoard (calls server/jira)
 ```
 
 ```ts

@@ -4,7 +4,7 @@ import {
   JiraApiError,
   JiraConfigError,
 } from "@/lib/services/server/jira";
-import { getDashboardData } from "@/lib/services/server/getDashboardData";
+import { loadSprintBoard } from "@/lib/services/server/sprintBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await getDashboardData(sprintNumber);
+    const data = await loadSprintBoard(sprintNumber);
     return Response.json(data);
   } catch (error) {
     if (error instanceof JiraConfigError) {
