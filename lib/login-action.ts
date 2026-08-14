@@ -64,5 +64,5 @@ export const loginAction = async (
     path: "/",
   });
 
-  redirect("/logs");
+  redirect("/sprint");
 };
