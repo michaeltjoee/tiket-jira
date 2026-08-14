@@ -4,7 +4,6 @@ export { parseSprintParam } from "./parse-sprint";
 export { hasJiraCredentials, JiraConfigError, JiraApiError } from "./client";
 export type {
   SprintBoardData,
-  SprintBoardMeta,
   LedgerParent,
   LedgerSubtask,
   SprintRef,

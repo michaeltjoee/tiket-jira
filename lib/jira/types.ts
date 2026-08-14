@@ -38,11 +38,7 @@ export type LedgerParent = {
   subtasks: LedgerSubtask[];
 };
 
-/**
- * Persisted sprint-board payload. Changing this shape, `SprintRef`, or
- * `SprintBoardMeta` requires bumping `SPRINT_BOARD_PERSIST_BUSTER` in
- * `lib/query/client.ts` — React Query will not detect the incompatibility.
- */
+/** HTTP and hook payload. Picker fields on this type are overlaid by the sprint ledger cache. */
 export type SprintBoardData = {
   sprint: SprintRef;
   parents: LedgerParent[];
@@ -52,12 +48,6 @@ export type SprintBoardData = {
   recentSprints: SprintRef[];
   /** ISO timestamp when parents/effort were fetched from Jira. */
   fetchedAt: string;
-};
-
-/** Persisted alongside the board. Same buster bump as `SprintBoardData`. */
-export type SprintBoardMeta = {
-  activeNumber: number;
-  recentSprints: SprintRef[];
 };
 
 export type JiraIssueFields = {

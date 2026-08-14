@@ -1,26 +1,62 @@
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 
-import type { SprintBoardData, SprintBoardMeta } from "@/lib/jira/types";
-
-import { SPRINT_BOARD_PERSIST_KEY } from "./client";
+import type { SprintBoardData, SprintRef } from "@/lib/jira/types";
 
 export const MAX_CACHED_BOARDS = 5;
 
-/** Board body: `["sprint-board", id]` (`"active"` or a number). See `./sprint-board.md`. */
+/** Single persisted document: picker + board bodies. See `./sprint-board.md`. */
 export const SPRINT_BOARD_QUERY_KEY = ["sprint-board"] as const;
-/** Picker singleton: `activeNumber` + `recentSprints`. Seeded by board fetches, not fetched itself. See `./sprint-board.md`. */
-export const SPRINT_BOARD_META_QUERY_KEY = ["sprint-board-meta"] as const;
 
-export const sprintBoardQueryKey = (id: number | "active") =>
-  [...SPRINT_BOARD_QUERY_KEY, id] as const;
+/** In-flight fetch observer. Not persisted. */
+export const SPRINT_BOARD_FETCH_QUERY_KEY = ["sprint-board-fetch"] as const;
+
+export const sprintBoardFetchQueryKey = (id: number | "active") =>
+  [...SPRINT_BOARD_FETCH_QUERY_KEY, id] as const;
+
+export const SPRINT_BOARD_PERSIST_KEY = "sprint-board:v1";
+/**
+ * Persist-client cache stamp. Stored next to the localStorage snapshot; on restore,
+ * a mismatch discards the snapshot and the board is fetched fresh. React Query does
+ * not inspect JSON — bump this yourself or old localStorage hydrates as-is.
+ *
+ * Procedure when changing the sprint ledger cache document, `SprintRef`,
+ * `SprintBoardData`, query keys, or `shouldDehydrateSprintBoardQuery`:
+ * 1. Make the type / key / dehydrate change.
+ * 2. Bump this string (`"v3"` → `"v4"`). Do not rename `SPRINT_BOARD_PERSIST_KEY`
+ *    unless you intend to orphan the old storage slot.
+ * 3. Skip this bump for UI-only changes (layout, copy, how the same payload is read).
+ */
+export const SPRINT_BOARD_PERSIST_BUSTER = "v3";
+
+export type FetchSprintBoard = (
+  sprintNumber?: number,
+) => Promise<SprintBoardData>;
+
+export type SprintBoardBody = Omit<SprintBoardData, "recentSprints">;
+
+export type SprintBoardPicker = {
+  activeNumber: number;
+  recentSprints: SprintRef[];
+};
+
+export type SprintLedgerCache = {
+  picker: SprintBoardPicker | null;
+  boards: Record<string, SprintBoardBody>;
+};
+
+export const EMPTY_SPRINT_LEDGER_CACHE: SprintLedgerCache = {
+  picker: null,
+  boards: {},
+};
 
 type SprintBoardErrorBody = {
   error?: string;
 };
 
-export const fetchSprintBoard = async (
-  sprintNumber?: number,
-): Promise<SprintBoardData> => {
+export const fetchSprintBoardFromHttp: FetchSprintBoard = async (
+  sprintNumber,
+) => {
   const url =
     sprintNumber === undefined
       ? "/api/sprint-board"
@@ -39,110 +75,162 @@ export const fetchSprintBoard = async (
   return (await response.json()) as SprintBoardData;
 };
 
-const isBoardQueryId = (id: unknown): id is number | "active" =>
-  id === "active" || typeof id === "number";
+const boardKey = (number: number) => String(number);
 
-export const pruneSprintBoardQueries = (queryClient: QueryClient) => {
-  const queries = queryClient
-    .getQueryCache()
-    .findAll({ queryKey: SPRINT_BOARD_QUERY_KEY })
-    .filter((query) => isBoardQueryId(query.queryKey[1]))
-    .toSorted((a, b) => a.state.dataUpdatedAt - b.state.dataUpdatedAt);
-
-  const extra = queries.length - MAX_CACHED_BOARDS;
+const pruneBoards = (
+  boards: Record<string, SprintBoardBody>,
+  keepKey: string,
+) => {
+  const keys = Object.keys(boards);
+  const extra = keys.length - MAX_CACHED_BOARDS;
   if (extra <= 0) return;
 
+  const oldest = keys
+    .filter((key) => key !== keepKey)
+    .toSorted(
+      (a, b) =>
+        Date.parse(boards[a]?.fetchedAt ?? "") -
+        Date.parse(boards[b]?.fetchedAt ?? ""),
+    );
+
   for (let i = 0; i < extra; i += 1) {
-    const query = queries[i];
-    if (!query) continue;
-    queryClient.removeQueries({ queryKey: query.queryKey });
+    const key = oldest[i];
+    if (key) delete boards[key];
   }
 };
 
-/**
- * Write a fetched board into the in-memory QueryClient — not a second store.
- * localStorage is only a snapshot of this cache (PersistQueryClientProvider);
- * the UI always reads QueryClient.
- *
- * React Query only auto-caches under the key that useQuery used. On /sprint
- * with no ?sprint=, that key is ["sprint-board", "active"] because the sprint
- * number is unknown until this response returns — useQuery needs a key on the
- * first paint, before queryFn resolves. This copies the same payload onto
- * ["sprint-board", number] so later numeric navigation (or Active → that
- * sprint) hits memory instead of refetching. After meta.activeNumber exists
- * the hook could always use the numeric key; it currently does not, so both
- * keys stay in play.
- *
- * Then prunes to MAX_CACHED_BOARDS so the persisted snapshot stays bounded.
- */
-export const cacheSprintBoardResponse = (
+export const mergeSprintLedgerCache = (
+  cache: SprintLedgerCache,
+  data: SprintBoardData,
+): SprintLedgerCache => {
+  const { recentSprints, ...body } = data;
+  const keepKey = boardKey(body.sprint.number);
+  const boards = { ...cache.boards, [keepKey]: body };
+  pruneBoards(boards, keepKey);
+
+  if (cache.picker) {
+    return { picker: cache.picker, boards };
+  }
+
+  const activeNumber =
+    recentSprints.find((sprint) => sprint.state === "active")?.number ??
+    recentSprints[0]?.number ??
+    body.sprint.number;
+
+  return {
+    picker: {
+      activeNumber,
+      recentSprints: recentSprints.filter(
+        (sprint) => sprint.number >= activeNumber,
+      ),
+    },
+    boards,
+  };
+};
+
+export const ingestSprintBoard = (
   queryClient: QueryClient,
   data: SprintBoardData,
 ) => {
-  queryClient.setQueryData(sprintBoardQueryKey(data.sprint.number), data);
+  queryClient.setQueryData<SprintLedgerCache>(
+    SPRINT_BOARD_QUERY_KEY,
+    (current) =>
+      mergeSprintLedgerCache(current ?? EMPTY_SPRINT_LEDGER_CACHE, data),
+  );
+};
 
-  // Seed sprint-board-meta once. Meta is not fetched on its own (enabled:
-  // false in useSprintBoard); board responses write it. activeNumber is
-  // which sprint is current for the picker's "Active sprint" option
-  // (state === "active", else first recent, else this board).
-  // recentSprints is the dropdown list. The guard means later fetches
-  // (an older sprint, a refetch of Active) do not overwrite this —
-  // switching to a closed sprint would otherwise replace "what is active"
-  // and the picker list. useSprintBoard overlays meta.recentSprints onto
-  // the current board so the picker stays stable while the board body changes.
-  if (!queryClient.getQueryData(SPRINT_BOARD_META_QUERY_KEY)) {
-    const activeNumber =
-      data.recentSprints.find((sprint) => sprint.state === "active")?.number ??
-      data.recentSprints[0]?.number ??
-      data.sprint.number;
+export const viewedBoard = (
+  cache: SprintLedgerCache | undefined,
+  sprintNumber: number | undefined,
+): SprintBoardBody | undefined => {
+  if (!cache) return undefined;
+  const wanted = sprintNumber ?? cache.picker?.activeNumber;
+  if (wanted === undefined) return undefined;
+  return cache.boards[boardKey(wanted)];
+};
 
-    const meta: SprintBoardMeta = {
-      activeNumber,
-      recentSprints: data.recentSprints,
-    };
-    queryClient.setQueryData(SPRINT_BOARD_META_QUERY_KEY, meta);
+export const overlaySprintBoard = (
+  cache: SprintLedgerCache | undefined,
+  sprintNumber: number | undefined,
+): SprintBoardData | undefined => {
+  const board = viewedBoard(cache, sprintNumber);
+  if (!board || !cache?.picker) return undefined;
+  return {
+    ...board,
+    recentSprints: cache.picker.recentSprints,
+  };
+};
+
+export const makeQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: Infinity,
+        gcTime: Infinity,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        retry: 1,
+      },
+    },
+  });
+
+let browserQueryClient: QueryClient | undefined;
+
+export const getQueryClient = () => {
+  if (typeof window === "undefined") {
+    return makeQueryClient();
   }
-
-  pruneSprintBoardQueries(queryClient);
-};
-
-export const fetchSprintBoardAndCache = async (
-  queryClient: QueryClient,
-  sprintNumber?: number,
-): Promise<SprintBoardData> => {
-  const data = await fetchSprintBoard(sprintNumber);
-  cacheSprintBoardResponse(queryClient, data);
-  return data;
-};
-
-/**
- * Hard refresh: wipe in-memory and persisted sprint-board cache, then refetch.
- * Cancels in-flight fetches first so they cannot write stale data after the wipe.
- * Removes meta (seeded by board fetches, not fetched itself) so the next response
- * can write a fresh activeNumber / recentSprints. Deletes the localStorage snapshot.
- * resetQueries keeps observers and marks boards stale so they refetch immediately.
- */
-export const clearPersistedSprintBoard = async (queryClient: QueryClient) => {
-  await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_QUERY_KEY });
-  await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_META_QUERY_KEY });
-  queryClient.removeQueries({ queryKey: SPRINT_BOARD_META_QUERY_KEY });
-  try {
-    localStorage.removeItem(SPRINT_BOARD_PERSIST_KEY);
-  } catch {
-    // private mode, quota, or disabled storage
+  if (!browserQueryClient) {
+    browserQueryClient = makeQueryClient();
   }
-  await queryClient.resetQueries({ queryKey: SPRINT_BOARD_QUERY_KEY });
+  return browserQueryClient;
 };
 
-/** Persist only successful sprint-board / sprint-board-meta queries to localStorage; skip loading/error and unrelated caches. */
+const createSprintBoardPersister = () =>
+  createAsyncStoragePersister({
+    storage: typeof window === "undefined" ? undefined : window.localStorage,
+    key: SPRINT_BOARD_PERSIST_KEY,
+  });
+
 export const shouldDehydrateSprintBoardQuery = (query: {
   queryKey: readonly unknown[];
   state: { status: string };
 }): boolean => {
   if (query.state.status !== "success") return false;
-  const root = query.queryKey[0];
   return (
-    root === SPRINT_BOARD_QUERY_KEY[0] ||
-    root === SPRINT_BOARD_META_QUERY_KEY[0]
+    query.queryKey.length === 1 &&
+    query.queryKey[0] === SPRINT_BOARD_QUERY_KEY[0]
   );
+};
+
+export const createSprintBoardPersistAdapter = () => {
+  const queryClient = getQueryClient();
+  return {
+    queryClient,
+    persistOptions: {
+      persister: createSprintBoardPersister(),
+      maxAge: Infinity,
+      buster: SPRINT_BOARD_PERSIST_BUSTER,
+      dehydrateOptions: {
+        shouldDehydrateQuery: shouldDehydrateSprintBoardQuery,
+      },
+    },
+  };
+};
+
+export const refreshSprintLedgerCache = async (
+  queryClient: QueryClient,
+  fetchBoard: FetchSprintBoard,
+  sprintNumber?: number,
+) => {
+  await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_FETCH_QUERY_KEY });
+  try {
+    localStorage.removeItem(SPRINT_BOARD_PERSIST_KEY);
+  } catch {
+    // private mode, quota, or disabled storage
+  }
+  queryClient.setQueryData(SPRINT_BOARD_QUERY_KEY, EMPTY_SPRINT_LEDGER_CACHE);
+  const data = await fetchBoard(sprintNumber);
+  ingestSprintBoard(queryClient, data);
 };

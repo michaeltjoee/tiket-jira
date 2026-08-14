@@ -77,6 +77,11 @@ const SprintControls = ({
     goToSprint(Number(value));
   };
 
+  const inPicker = recentSprints.some(
+    (sprint) => sprint.number === current.number,
+  );
+  const selectValue = isForcedSprint ? String(current.number) : "active";
+
   return (
     <div className="controls">
       <label className="control_label" htmlFor="sprint-select">
@@ -85,7 +90,7 @@ const SprintControls = ({
       <select
         id="sprint-select"
         className="sprint_select"
-        value={isForcedSprint ? String(current.number) : "active"}
+        value={selectValue}
         onChange={handleSelect}
         disabled={isBusy}
       >
@@ -96,9 +101,11 @@ const SprintControls = ({
             {sprint.state === "active" ? " · active" : ""}
           </option>
         ))}
-        {!recentSprints.some((sprint) => sprint.number === current.number) && (
-          <option value={current.number}>{current.name}</option>
-        )}
+        {isForcedSprint && !inPicker ? (
+          <option value={current.number} disabled>
+            {current.name}
+          </option>
+        ) : null}
       </select>
       <button
         type="button"

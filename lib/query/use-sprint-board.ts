@@ -1,56 +1,83 @@
 "use client";
 
+import { useRef } from "react";
 import {
   useQuery,
   useQueryClient,
   useIsRestoring,
 } from "@tanstack/react-query";
 
-import type { SprintBoardMeta } from "@/lib/jira/types";
 import {
-  clearPersistedSprintBoard,
-  fetchSprintBoardAndCache,
-  SPRINT_BOARD_META_QUERY_KEY,
-  sprintBoardQueryKey,
+  fetchSprintBoardFromHttp,
+  ingestSprintBoard,
+  overlaySprintBoard,
+  refreshSprintLedgerCache,
+  sprintBoardFetchQueryKey,
+  viewedBoard,
+  type FetchSprintBoard,
+  type SprintLedgerCache,
+  SPRINT_BOARD_QUERY_KEY,
 } from "@/lib/query/sprint-board";
 
-export const useSprintBoard = (sprintNumber: number | undefined) => {
-  const queryClient = useQueryClient();
-  // True while PersistQueryClientProvider hydrates localStorage into QueryClient.
-  // Board fetch waits (enabled: !isRestoring) so a reload does not race restore
-  // and refetch; isPending stays true so the UI does not flash empty first.
-  const isRestoring = useIsRestoring();
-  const boardId: number | "active" = sprintNumber ?? "active";
+export const createSprintBoardCache = (deps: {
+  fetchBoard: FetchSprintBoard;
+}) => {
+  const useSprintBoard = (sprintNumber: number | undefined) => {
+    const queryClient = useQueryClient();
+    const isRestoring = useIsRestoring();
+    const refreshingRef = useRef(false);
 
-  const { data: meta } = useQuery<SprintBoardMeta>({
-    queryKey: SPRINT_BOARD_META_QUERY_KEY,
-    enabled: false,
-    queryFn: () => {
-      throw new Error("sprint-board-meta is written by board fetches");
-    },
-  });
+    const { data: cache } = useQuery<SprintLedgerCache>({
+      queryKey: SPRINT_BOARD_QUERY_KEY,
+      enabled: false,
+      queryFn: () => {
+        throw new Error("sprint-board document is written by board fetches");
+      },
+    });
 
-  const boardQuery = useQuery({
-    queryKey: sprintBoardQueryKey(boardId),
-    queryFn: () => fetchSprintBoardAndCache(queryClient, sprintNumber),
-    enabled: !isRestoring,
-  });
+    const board = viewedBoard(cache, sprintNumber);
+    const needsFetch = !isRestoring && board === undefined;
+    const fetchId = sprintNumber ?? cache?.picker?.activeNumber ?? "active";
 
-  const refresh = () => clearPersistedSprintBoard(queryClient);
+    const boardQuery = useQuery({
+      queryKey: sprintBoardFetchQueryKey(fetchId),
+      queryFn: async () => {
+        const data = await deps.fetchBoard(sprintNumber);
+        ingestSprintBoard(queryClient, data);
+        return data;
+      },
+      enabled: needsFetch && !refreshingRef.current,
+    });
 
-  const data = boardQuery.data
-    ? {
-        ...boardQuery.data,
-        recentSprints: meta?.recentSprints ?? boardQuery.data.recentSprints,
+    const data = overlaySprintBoard(cache, sprintNumber);
+    const refresh = async () => {
+      refreshingRef.current = true;
+      try {
+        await refreshSprintLedgerCache(
+          queryClient,
+          deps.fetchBoard,
+          sprintNumber,
+        );
+      } finally {
+        refreshingRef.current = false;
       }
-    : undefined;
+    };
 
-  return {
-    data,
-    isRestoring,
-    isPending: isRestoring || boardQuery.isPending,
-    isFetching: boardQuery.isFetching,
-    error: boardQuery.error,
-    refresh,
+    return {
+      data,
+      isRestoring,
+      isPending:
+        isRestoring ||
+        (data === undefined && !boardQuery.isError && needsFetch),
+      isFetching: boardQuery.isFetching,
+      error: boardQuery.error,
+      refresh,
+    };
   };
+
+  return { useSprintBoard };
 };
+
+export const { useSprintBoard } = createSprintBoardCache({
+  fetchBoard: fetchSprintBoardFromHttp,
+});
