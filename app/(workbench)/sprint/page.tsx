@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import LedgerLoader from "@/components/LedgerLoader";
 import SprintBoard from "@/components/SprintBoard";
-import { hasJiraCredentials } from "@/lib/jira";
+import { hasJiraCredentials } from "@/lib/services/server/jira";
 
 export const metadata: Metadata = {
   title: "Sprint ledger",

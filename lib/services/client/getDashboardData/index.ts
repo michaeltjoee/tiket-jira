@@ -1,18 +1,21 @@
-import type { FetchSprintBoard, SprintBoardData } from "./types";
+import "client-only";
+
+import type {
+  GetDashboardData,
+  SprintBoardData,
+} from "@/lib/services/shared/getDashboardData";
 
 export type {
-  FetchSprintBoard,
-  FetchSprintBoardParams,
+  GetDashboardData,
+  GetDashboardDataParams,
   SprintBoardData,
-} from "./types";
+} from "@/lib/services/shared/getDashboardData";
 
 type SprintBoardErrorBody = {
   error?: string;
 };
 
-export const fetchSprintBoardFromHttp: FetchSprintBoard = async (
-  sprintNumber,
-) => {
+export const getDashboardData: GetDashboardData = async (sprintNumber) => {
   const url =
     sprintNumber === undefined
       ? "/api/sprint-board"

@@ -1,8 +1,12 @@
 import "server-only";
 
-import { jiraFetch, getJiraEnv } from "./client";
-import { sphinxSprintName, toSprintRef } from "./format";
-import type { JiraSprint, SprintRef } from "./types";
+import {
+  sphinxSprintName,
+  toSprintRef,
+  type JiraSprint,
+  type SprintRef,
+} from "@/lib/services/shared/jira";
+import { getJiraEnv, jiraFetch } from "./client";
 
 type AgileSprintPage = {
   values: JiraSprint[];

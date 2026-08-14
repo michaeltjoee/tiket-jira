@@ -16,7 +16,7 @@ import {
   type SprintLedgerCache,
   SPRINT_BOARD_QUERY_KEY,
 } from "@/lib/query/sprint-board";
-import { fetchSprintBoardFromHttp } from "@/lib/services/sprintBoard";
+import { getDashboardData } from "@/lib/services/client/getDashboardData";
 
 export { createSprintBoardPersistAdapter } from "@/lib/query/sprint-board";
 
@@ -40,7 +40,7 @@ export const useSprintBoard = (sprintNumber: number | undefined) => {
   const boardQuery = useQuery({
     queryKey: sprintBoardFetchQueryKey(fetchId),
     queryFn: async () => {
-      const data = await fetchSprintBoardFromHttp(sprintNumber);
+      const data = await getDashboardData(sprintNumber);
       ingestSprintBoard(queryClient, data);
       return data;
     },
@@ -51,7 +51,7 @@ export const useSprintBoard = (sprintNumber: number | undefined) => {
   const refresh = () => {
     const task = refreshSprintLedgerCache(
       queryClient,
-      fetchSprintBoardFromHttp,
+      getDashboardData,
       sprintNumber,
     );
     startRefresh(async () => {

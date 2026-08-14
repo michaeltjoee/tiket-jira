@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
-import type { SprintRef } from "@/lib/jira/types";
+import type { SprintRef } from "@/lib/services/shared/jira";
 
 type Props = {
   current: SprintRef;

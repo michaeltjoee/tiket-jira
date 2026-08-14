@@ -1,44 +1,99 @@
 ---
-description: HTTP query/fetch functions live in lib/services, not lib/query.
+description: HTTP query/fetch functions live in lib/services/{client,server,shared}, not lib/query.
 globs: lib/query/**/*.{ts,tsx},lib/services/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
 # Query functions live in `lib/services`
 
-HTTP fetchers and React Query `queryFn` implementations belong in `lib/services/<name>/`. `lib/query` holds query keys, cache merge/ingest, persist, and hooks that *call* those fetchers.
+HTTP fetchers and React Query `queryFn` implementations belong in `lib/services/`, grouped by **runtime first**:
 
-Each service is a folder:
+- `lib/services/client/<name>/` — called from client code (`"use client"` hooks, client components)
+- `lib/services/server/<name>/` — called from server code (route handlers, Server Components, Server Actions)
+- `lib/services/shared/<name>/` — isomorphic functions **and** contract types used on more than one runtime
 
-- `index.ts` — the implementation
-- `types.ts` — params, function type, and return type
+`lib/query` holds query keys, cache merge/ingest, persist, and hooks that *call* those fetchers.
 
-Re-export those types from `index.ts`. Do not add a `lib/services` barrel. Import the service folder.
+Each service is a folder with `index.ts`. Shared also has `types.ts` (params, function type, return type) re-exported from `index.ts`. Client and server folders are implementation-only unless the client re-exports shared types for DX.
+
+Do not add a `lib/services` barrel. Import the service folder.
+
+```ts
+import { getDashboardData } from "@/lib/services/client/getDashboardData";
+import { getDashboardData } from "@/lib/services/server/getDashboardData";
+import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
+```
+
+## Environment markers
+
+- Every `lib/services/server/<name>/index.ts` starts with `import "server-only"`.
+- Every `lib/services/client/<name>/index.ts` starts with `import "client-only"`.
+- `shared/` has neither.
+
+Folders are for humans. These packages are the actual import guard.
+
+## Contract types
+
+Canonical types live in `shared/<name>/`. Never import types from `server/` (it is `server-only`; `import type` can still trip the client boundary).
+
+- Client modules that already import the function may also import types from `client/<name>/` (the client folder re-exports shared types).
+- Type-only callers (`lib/query`, UI that only needs the DTO) import from `shared/`.
+- Server implementations import types from `shared/` and do **not** re-export them.
 
 ```ts
 // ❌ BAD — network I/O next to cache keys
 // lib/query/sprint-board.ts
-export const fetchSprintBoardFromHttp = async (sprintNumber?: number) => {
+export const getDashboardData = async (sprintNumber?: number) => {
   const response = await fetch("/api/sprint-board");
   return response.json();
 };
 
 // ❌ BAD — nested folder named after the function
-// lib/services/sprintBoard/fetchSprintBoardFromHttp/index.ts
+// lib/services/client/getDashboardData/getDashboardData/index.ts
 
-// ✅ GOOD — service folder; types in types.ts, re-exported from index.ts
-// lib/services/sprintBoard/types.ts
-export type FetchSprintBoardParams = { sprintNumber?: number };
+// ❌ BAD — ungrouped service (no client/server/shared)
+// lib/services/getDashboardData/index.ts
+
+// ❌ BAD — type-only caller importing from server
+// import type { SprintBoardData } from "@/lib/services/server/getDashboardData";
+
+// ✅ GOOD — shared contract types
+// lib/services/shared/getDashboardData/types.ts
+export type GetDashboardDataParams = { sprintNumber?: number };
 export type SprintBoardData = { /* return type */ };
-export type FetchSprintBoard = (
-  sprintNumber?: FetchSprintBoardParams["sprintNumber"],
+export type GetDashboardData = (
+  sprintNumber?: GetDashboardDataParams["sprintNumber"],
 ) => Promise<SprintBoardData>;
 
-// lib/services/sprintBoard/index.ts
-export type { FetchSprintBoard, FetchSprintBoardParams, SprintBoardData } from "./types";
-export const fetchSprintBoardFromHttp: FetchSprintBoard = async (sprintNumber) => { /* HTTP */ };
+// lib/services/shared/getDashboardData/index.ts
+export type { GetDashboardData, GetDashboardDataParams, SprintBoardData } from "./types";
 
-// lib/query/useSprintBoard.ts
-import { fetchSprintBoardFromHttp } from "@/lib/services/sprintBoard";
-import type { SprintBoardData } from "@/lib/services/sprintBoard";
+// lib/services/client/getDashboardData/index.ts
+import "client-only";
+export type { GetDashboardData, GetDashboardDataParams, SprintBoardData } from "@/lib/services/shared/getDashboardData";
+export const getDashboardData: GetDashboardData = async (sprintNumber) => { /* HTTP */ };
+
+// lib/services/server/getDashboardData/index.ts
+import "server-only";
+export const getDashboardData = async (sprintNumber?: number): Promise<SprintBoardData> => { /* Jira */ };
+
+// lib/query/useSprintBoard.ts — client caller (function + types from client)
+import { getDashboardData } from "@/lib/services/client/getDashboardData";
+import type { SprintBoardData } from "@/lib/services/client/getDashboardData";
+
+// lib/query/sprint-board.ts — type-only isomorphic caller
+import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
+```
+
+Not every domain needs all three folders. Jira has no `client/` — the browser never talks to Jira.
+
+```
+lib/services/server/jira/     jiraFetch, credentials, fetchBoardBody, resolveSprint  + import "server-only"
+lib/services/shared/jira/     SprintRef, LedgerParent, format helpers, parseSprintParam
+lib/services/server/getDashboardData/  getDashboardData (calls server/jira)
+```
+
+```ts
+import { fetchBoardBody, resolveSprint } from "@/lib/services/server/jira";
+import { parseSprintParam, type SprintRef } from "@/lib/services/shared/jira";
 ```

@@ -1,21 +1,19 @@
 import "server-only";
 
-import { jiraFetch } from "./client";
 import {
+  browseUrl,
+  compareDateAscEmptyLast,
   DEV_ASSIGNEE_ACCOUNT_ID,
   FIELD_DEV_END,
   FIELD_DEV_EFFORT,
   FIELD_DEV_START,
+  formatDevRangeLabel,
   PROJECT_KEY,
-  browseUrl,
-} from "./constants";
-import { compareDateAscEmptyLast, formatDevRangeLabel } from "./format";
-import { buildRecentSprintWindow, resolveSprint } from "./sprints";
-import type { JiraIssue, LedgerParent, LedgerSubtask } from "./types";
-import type { SprintBoardData } from "@/lib/services/sprintBoard";
-
-export { resolveSprint } from "./sprints";
-export { formatEffort } from "./format";
+  type JiraIssue,
+  type LedgerParent,
+  type LedgerSubtask,
+} from "@/lib/services/shared/jira";
+import { jiraFetch } from "./client";
 
 type SearchResponse = {
   issues: JiraIssue[];
@@ -136,7 +134,7 @@ const toParent = (
   };
 };
 
-const fetchBoardBody = async (sprintName: string) => {
+export const fetchBoardBody = async (sprintName: string) => {
   const parentIssues = await searchAll(parentsJql(sprintName), PARENT_FIELDS);
 
   const childKeys = parentIssues.flatMap(
@@ -185,20 +183,5 @@ const fetchBoardBody = async (sprintName: string) => {
     totalEffort,
     parentCount: parents.length,
     subtaskCount,
-  };
-};
-
-export const loadSprintBoard = async (
-  sprintNumber?: number,
-): Promise<SprintBoardData> => {
-  const { sprint, active } = await resolveSprint(sprintNumber);
-  const recentSprints = buildRecentSprintWindow(active);
-  const body = await fetchBoardBody(sprint.name);
-
-  return {
-    sprint,
-    recentSprints,
-    fetchedAt: new Date().toISOString(),
-    ...body,
   };
 };

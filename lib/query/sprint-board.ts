@@ -1,8 +1,8 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 
-import type { SprintRef } from "@/lib/jira/types";
-import type { SprintBoardData } from "@/lib/services/sprintBoard";
+import type { SprintRef } from "@/lib/services/shared/jira";
+import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
 
 export const MAX_CACHED_BOARDS = 5;
 

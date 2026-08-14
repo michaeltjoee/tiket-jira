@@ -1,6 +1,9 @@
 import "server-only";
 
-import { JIRA_BOARD_ID_DEFAULT, JIRA_HOST_DEFAULT } from "./constants";
+import {
+  JIRA_BOARD_ID_DEFAULT,
+  JIRA_HOST_DEFAULT,
+} from "@/lib/services/shared/jira";
 
 export class JiraConfigError extends Error {
   constructor(message: string) {

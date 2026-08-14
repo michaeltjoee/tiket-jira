@@ -1,10 +1,10 @@
+import { parseSprintParam } from "@/lib/services/shared/jira";
 import {
   hasJiraCredentials,
   JiraApiError,
   JiraConfigError,
-  loadSprintBoard,
-  parseSprintParam,
-} from "@/lib/jira";
+} from "@/lib/services/server/jira";
+import { getDashboardData } from "@/lib/services/server/getDashboardData";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await loadSprintBoard(sprintNumber);
+    const data = await getDashboardData(sprintNumber);
     return Response.json(data);
   } catch (error) {
     if (error instanceof JiraConfigError) {

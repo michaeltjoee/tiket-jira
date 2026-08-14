@@ -7,9 +7,9 @@ import {
   statusTone,
   todayIsoDate,
   type DueMark,
-} from "@/lib/jira/format";
-import type { LedgerParent } from "@/lib/jira/types";
-import type { SprintBoardData } from "@/lib/services/sprintBoard";
+  type LedgerParent,
+} from "@/lib/services/shared/jira";
+import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
 
 type Props = {
   data: SprintBoardData;

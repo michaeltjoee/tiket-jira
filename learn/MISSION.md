@@ -17,6 +17,6 @@ You maintain this sprint ledger. Changing how boards are fetched or cached witho
 
 ## Out of scope
 
-- Jira JQL / field mapping inside `lib/jira/board.ts` (how a board _body_ is built).
+- Jira JQL / field mapping inside `lib/services/server/jira` (how a board _body_ is built).
 - Visual design of the ledger table.
 - General TanStack Query beyond what this cache split uses.

@@ -3,14 +3,14 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SprintRef } from "@/lib/jira/types";
+import type { SprintRef } from "@/lib/services/shared/jira";
 import { MAX_CACHED_BOARDS } from "@/lib/query/sprint-board";
 import { useSprintBoard } from "@/lib/query/useSprintBoard";
-import { fetchSprintBoardFromHttp } from "@/lib/services/sprintBoard";
-import type { SprintBoardData } from "@/lib/services/sprintBoard";
+import { getDashboardData } from "@/lib/services/client/getDashboardData";
+import type { SprintBoardData } from "@/lib/services/shared/getDashboardData";
 
-vi.mock("@/lib/services/sprintBoard", () => ({
-  fetchSprintBoardFromHttp: vi.fn(),
+vi.mock("@/lib/services/client/getDashboardData", () => ({
+  getDashboardData: vi.fn(),
 }));
 
 const sprintRef = (number: number, state: string): SprintRef => ({
@@ -53,7 +53,7 @@ const wrapperWith = (queryClient: QueryClient) => {
 const setup = (
   fetchBoard: (sprintNumber?: number) => Promise<SprintBoardData>,
 ) => {
-  vi.mocked(fetchSprintBoardFromHttp).mockImplementation(fetchBoard);
+  vi.mocked(getDashboardData).mockImplementation(fetchBoard);
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -71,7 +71,7 @@ const setup = (
 
 describe("useSprintBoard", () => {
   beforeEach(() => {
-    vi.mocked(fetchSprintBoardFromHttp).mockReset();
+    vi.mocked(getDashboardData).mockReset();
   });
 
   it("seeds the picker once and overlays it onto a later board", async () => {

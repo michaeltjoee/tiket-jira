@@ -1,6 +1,6 @@
-import type { LedgerParent, SprintRef } from "@/lib/jira/types";
+import type { LedgerParent, SprintRef } from "@/lib/services/shared/jira";
 
-export type FetchSprintBoardParams = {
+export type GetDashboardDataParams = {
   sprintNumber?: number;
 };
 
@@ -16,6 +16,6 @@ export type SprintBoardData = {
   fetchedAt: string;
 };
 
-export type FetchSprintBoard = (
-  sprintNumber?: FetchSprintBoardParams["sprintNumber"],
+export type GetDashboardData = (
+  sprintNumber?: GetDashboardDataParams["sprintNumber"],
 ) => Promise<SprintBoardData>;

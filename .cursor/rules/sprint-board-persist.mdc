@@ -1,6 +1,6 @@
 ---
 description: Bump the persist buster when changing the sprint ledger cache document.
-globs: lib/jira/types.ts,lib/services/sprintBoard/types.ts,lib/query/sprint-board.ts,lib/query/useSprintBoard.ts,components/QueryProvider/QueryProvider.tsx
+globs: lib/services/shared/jira/types.ts,lib/services/shared/getDashboardData/types.ts,lib/query/sprint-board.ts,lib/query/useSprintBoard.ts,components/QueryProvider/QueryProvider.tsx
 alwaysApply: false
 ---
 
