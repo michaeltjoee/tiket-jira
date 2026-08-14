@@ -60,3 +60,55 @@ export const formatEffort = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return "";
   return Number.isInteger(value) ? String(value) : String(value);
 };
+
+export const todayIsoDate = (now = new Date()): string => {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export const formatTodayLabel = (now = new Date()): string =>
+  new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  }).format(now);
+
+export type DueMark = "due" | "late";
+
+const LATE_ELIGIBLE_STATUSES = new Set([
+  "to do",
+  "in progress",
+  "in development",
+]);
+
+export const isLateEligibleStatus = (name: string | null | undefined) =>
+  LATE_ELIGIBLE_STATUSES.has((name ?? "").trim().toLowerCase());
+
+export const dueMark = (
+  endDate: string | null | undefined,
+  status: string | null | undefined,
+  today = todayIsoDate(),
+): DueMark | null => {
+  if (!endDate || !isLateEligibleStatus(status)) return null;
+  const day = endDate.slice(0, 10);
+  if (day > today) return null;
+  return day === today ? "due" : "late";
+};
+
+export type StatusTone = "open" | "active" | "review" | "done" | "blocked";
+
+const BLOCKED_RE = /\b(blocked|on hold|impediment)\b/i;
+const REVIEW_RE = /qa|review|test|verify|uat|deploy|staging/i;
+
+export const statusTone = (
+  name: string,
+  category: string | null | undefined,
+): StatusTone => {
+  if (category === "done") return "done";
+  if (BLOCKED_RE.test(name)) return "blocked";
+  if (REVIEW_RE.test(name)) return "review";
+  if (category === "new") return "open";
+  return "active";
+};

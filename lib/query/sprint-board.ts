@@ -6,10 +6,11 @@ import { SPRINT_BOARD_PERSIST_KEY } from "./client";
 
 export const MAX_CACHED_BOARDS = 5;
 
-export const sprintBoardMetaQueryKey = ["sprint-board-meta"] as const;
+export const SPRINT_BOARD_QUERY_KEY = ["sprint-board"] as const;
+export const SPRINT_BOARD_META_QUERY_KEY = ["sprint-board-meta"] as const;
 
 export const sprintBoardQueryKey = (id: number | "active") =>
-  ["sprint-board", id] as const;
+  [...SPRINT_BOARD_QUERY_KEY, id] as const;
 
 type SprintBoardErrorBody = {
   error?: string;
@@ -42,7 +43,7 @@ const isBoardQueryId = (id: unknown): id is number | "active" =>
 export const pruneSprintBoardQueries = (queryClient: QueryClient) => {
   const queries = queryClient
     .getQueryCache()
-    .findAll({ queryKey: ["sprint-board"] })
+    .findAll({ queryKey: SPRINT_BOARD_QUERY_KEY })
     .filter((query) => isBoardQueryId(query.queryKey[1]))
     .toSorted((a, b) => a.state.dataUpdatedAt - b.state.dataUpdatedAt);
 
@@ -62,7 +63,7 @@ export const cacheSprintBoardResponse = (
 ) => {
   queryClient.setQueryData(sprintBoardQueryKey(data.sprint.number), data);
 
-  if (!queryClient.getQueryData(sprintBoardMetaQueryKey)) {
+  if (!queryClient.getQueryData(SPRINT_BOARD_META_QUERY_KEY)) {
     const activeNumber =
       data.recentSprints.find((sprint) => sprint.state === "active")?.number ??
       data.recentSprints[0]?.number ??
@@ -72,7 +73,7 @@ export const cacheSprintBoardResponse = (
       activeNumber,
       recentSprints: data.recentSprints,
     };
-    queryClient.setQueryData(sprintBoardMetaQueryKey, meta);
+    queryClient.setQueryData(SPRINT_BOARD_META_QUERY_KEY, meta);
   }
 
   pruneSprintBoardQueries(queryClient);
@@ -87,23 +88,34 @@ export const fetchSprintBoardAndCache = async (
   return data;
 };
 
+/**
+ * Hard refresh: wipe in-memory and persisted sprint-board cache, then refetch.
+ * Cancels in-flight fetches first so they cannot write stale data after the wipe.
+ * Removes meta (seeded by board fetches, not fetched itself) so the next response
+ * can write a fresh activeNumber / recentSprints. Deletes the localStorage snapshot.
+ * resetQueries keeps observers and marks boards stale so they refetch immediately.
+ */
 export const clearPersistedSprintBoard = async (queryClient: QueryClient) => {
-  await queryClient.cancelQueries({ queryKey: ["sprint-board"] });
-  await queryClient.cancelQueries({ queryKey: sprintBoardMetaQueryKey });
-  queryClient.removeQueries({ queryKey: sprintBoardMetaQueryKey });
+  await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_QUERY_KEY });
+  await queryClient.cancelQueries({ queryKey: SPRINT_BOARD_META_QUERY_KEY });
+  queryClient.removeQueries({ queryKey: SPRINT_BOARD_META_QUERY_KEY });
   try {
     localStorage.removeItem(SPRINT_BOARD_PERSIST_KEY);
   } catch {
     // private mode, quota, or disabled storage
   }
-  await queryClient.resetQueries({ queryKey: ["sprint-board"] });
+  await queryClient.resetQueries({ queryKey: SPRINT_BOARD_QUERY_KEY });
 };
 
+/** Persist only successful sprint-board / sprint-board-meta queries to localStorage; skip loading/error and unrelated caches. */
 export const shouldDehydrateSprintBoardQuery = (query: {
   queryKey: readonly unknown[];
   state: { status: string };
 }): boolean => {
   if (query.state.status !== "success") return false;
   const root = query.queryKey[0];
-  return root === "sprint-board" || root === "sprint-board-meta";
+  return (
+    root === SPRINT_BOARD_QUERY_KEY[0] ||
+    root === SPRINT_BOARD_META_QUERY_KEY[0]
+  );
 };

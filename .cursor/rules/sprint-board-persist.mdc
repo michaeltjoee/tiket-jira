@@ -1,0 +1,25 @@
+---
+description: Bump the persist buster when changing persisted sprint-board data or query keys.
+globs: lib/jira/types.ts,lib/query/client.ts,lib/query/sprint-board.ts,components/QueryProvider/QueryProvider.tsx
+alwaysApply: false
+---
+
+# Sprint-board persist buster
+
+React Query persist does **not** detect JSON shape changes. It only compares `SPRINT_BOARD_PERSIST_BUSTER` to the stamp stored in `localStorage`.
+
+When you change `SprintRef`, `SprintBoardData`, `SprintBoardMeta`, query keys (`SPRINT_BOARD_QUERY_KEY`, `SPRINT_BOARD_META_QUERY_KEY`), or `shouldDehydrateSprintBoardQuery`:
+
+1. Make the type / key / dehydrate change.
+2. Bump `SPRINT_BOARD_PERSIST_BUSTER` in `lib/query/client.ts` (`"v2"` → `"v3"`).
+3. Leave `SPRINT_BOARD_PERSIST_KEY` alone unless you intend to orphan the old storage slot.
+
+Skip the bump for UI-only changes (layout, copy, reading the same payload).
+
+```ts
+// ❌ shape change without bump — old localStorage hydrates, staleTime is Infinity
+export type SprintBoardMeta = { activeSprint: number; recentSprints: SprintRef[] };
+
+// ✅ bump the stamp so restore discards the old snapshot
+export const SPRINT_BOARD_PERSIST_BUSTER = "v3";
+```

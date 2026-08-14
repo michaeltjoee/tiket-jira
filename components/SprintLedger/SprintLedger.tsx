@@ -1,5 +1,13 @@
 import SprintControls from "@/components/SprintControls";
-import { formatEffort } from "@/lib/jira/format";
+import {
+  dueMark,
+  formatDevRangeLabel,
+  formatEffort,
+  formatTodayLabel,
+  statusTone,
+  todayIsoDate,
+  type DueMark,
+} from "@/lib/jira/format";
 import type { LedgerParent, SprintBoardData } from "@/lib/jira/types";
 
 type Props = {
@@ -28,8 +36,69 @@ const GapCell = ({
   );
 };
 
+const StatusCell = ({ name, category }: { name: string; category: string }) => {
+  const tone = statusTone(name, category);
+  return (
+    <span className={`status status_${tone}`} title={name}>
+      <span className="status_mark" aria-hidden="true" />
+      <span className="status_name">{name}</span>
+    </span>
+  );
+};
+
+const DateCell = ({
+  startDate,
+  endDate,
+  mark,
+}: {
+  startDate: string | null;
+  endDate: string | null;
+  mark: DueMark | null;
+}) => {
+  const range = formatDevRangeLabel(startDate, endDate);
+  const isGap = !range;
+  const stamp = mark === "late" ? "Late" : mark === "due" ? "Due" : null;
+  const title = isGap
+    ? "Missing dev dates"
+    : mark === "due"
+      ? "Due today"
+      : mark === "late"
+        ? "Past due"
+        : undefined;
+
+  return (
+    <span
+      className={`cell range_cell${isGap ? " gap" : ""}${mark ? ` ${mark}` : ""}`}
+      title={title}
+    >
+      <span className="range_value">{isGap ? "—" : range}</span>
+      {stamp ? <span className="due_stamp">{stamp}</span> : null}
+    </span>
+  );
+};
+
+const tallyDue = (parents: LedgerParent[]) => {
+  let dueToday = 0;
+  let late = 0;
+
+  for (const parent of parents) {
+    const parentMark = dueMark(parent.devEndDate, parent.status);
+    if (parentMark === "due") dueToday += 1;
+    else if (parentMark === "late") late += 1;
+
+    for (const subtask of parent.subtasks) {
+      const subMark = dueMark(subtask.devEndDate, subtask.status);
+      if (subMark === "due") dueToday += 1;
+      else if (subMark === "late") late += 1;
+    }
+  }
+
+  return { dueToday, late };
+};
+
 const ParentBlock = ({ parent }: { parent: LedgerParent }) => {
   const effortLabel = formatEffort(parent.effort);
+  const parentDue = dueMark(parent.devEndDate, parent.status);
 
   return (
     <article className="parent_block">
@@ -50,16 +119,19 @@ const ParentBlock = ({ parent }: { parent: LedgerParent }) => {
         >
           {parent.summary}
         </a>
-        <span className="status">{parent.status}</span>
+        <StatusCell
+          name={parent.status ?? "—"}
+          category={parent.statusCategory ?? "unknown"}
+        />
         <GapCell
           className="cell effort_cell"
           value={effortLabel}
           label="effort"
         />
-        <GapCell
-          className="cell range_cell"
-          value={parent.devRangeLabel ?? ""}
-          label="dev dates"
+        <DateCell
+          startDate={parent.devStartDate}
+          endDate={parent.devEndDate}
+          mark={parentDue}
         />
       </div>
       {parent.subtasks.map((subtask) => (
@@ -80,12 +152,15 @@ const ParentBlock = ({ parent }: { parent: LedgerParent }) => {
           >
             {subtask.summary}
           </a>
-          <span className="status muted" aria-hidden="true" />
+          <StatusCell
+            name={subtask.status ?? "—"}
+            category={subtask.statusCategory ?? "unknown"}
+          />
           <span className="cell effort_cell muted" aria-hidden="true" />
-          <GapCell
-            className="cell range_cell"
-            value={subtask.devRangeLabel ?? ""}
-            label="dev dates"
+          <DateCell
+            startDate={subtask.devStartDate}
+            endDate={subtask.devEndDate}
+            mark={dueMark(subtask.devEndDate, subtask.status)}
           />
         </div>
       ))}
@@ -97,6 +172,10 @@ const SprintLedger = ({ data, isRefreshing, onRefresh }: Props) => {
   const effortDisplay = Number.isInteger(data.totalEffort)
     ? String(data.totalEffort)
     : data.totalEffort.toFixed(1).replace(/\.0$/, "");
+  const today = new Date();
+  const todayIso = todayIsoDate(today);
+  const todayLabel = formatTodayLabel(today);
+  const { dueToday, late } = tallyDue(data.parents);
 
   return (
     <div className="ledger">
@@ -110,6 +189,28 @@ const SprintLedger = ({ data, isRefreshing, onRefresh }: Props) => {
               ·
             </span>
             {data.subtaskCount} subtask{data.subtaskCount === 1 ? "" : "s"}
+            <span className="dot" aria-hidden="true">
+              ·
+            </span>
+            <time className="today" dateTime={todayIso}>
+              {todayLabel}
+            </time>
+            {dueToday > 0 ? (
+              <>
+                <span className="dot" aria-hidden="true">
+                  ·
+                </span>
+                <span className="due_meta">{dueToday} due</span>
+              </>
+            ) : null}
+            {late > 0 ? (
+              <>
+                <span className="dot" aria-hidden="true">
+                  ·
+                </span>
+                <span className="due_meta">{late} late</span>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="effort_block">

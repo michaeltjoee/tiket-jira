@@ -20,6 +20,7 @@ const QueryProvider = ({ children }: { children: ReactNode }) => {
       persistOptions={{
         persister,
         maxAge: Infinity,
+        // Discard the localStorage snapshot if this stamp no longer matches.
         buster: SPRINT_BOARD_PERSIST_BUSTER,
         dehydrateOptions: {
           shouldDehydrateQuery: shouldDehydrateSprintBoardQuery,

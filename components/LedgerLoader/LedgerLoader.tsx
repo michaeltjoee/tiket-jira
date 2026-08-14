@@ -32,7 +32,7 @@ const GhostRow = ({
       </>
     ) : (
       <>
-        <span className="status muted" />
+        <span className="status loader_rule loader_rule_short" />
         <span className="cell effort_cell muted" />
       </>
     )}

@@ -10,7 +10,7 @@ import type { SprintBoardMeta } from "@/lib/jira/types";
 import {
   clearPersistedSprintBoard,
   fetchSprintBoardAndCache,
-  sprintBoardMetaQueryKey,
+  SPRINT_BOARD_META_QUERY_KEY,
   sprintBoardQueryKey,
 } from "@/lib/query/sprint-board";
 
@@ -20,7 +20,7 @@ export const useSprintBoard = (sprintNumber: number | undefined) => {
   const boardId: number | "active" = sprintNumber ?? "active";
 
   const { data: meta } = useQuery<SprintBoardMeta>({
-    queryKey: sprintBoardMetaQueryKey,
+    queryKey: SPRINT_BOARD_META_QUERY_KEY,
     enabled: false,
     queryFn: () => {
       throw new Error("sprint-board-meta is written by board fetches");

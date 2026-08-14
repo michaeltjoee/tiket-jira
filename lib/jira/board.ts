@@ -36,7 +36,7 @@ const PARENT_FIELDS = [
   FIELD_DEV_END,
 ];
 
-const CHILD_FIELDS = ["summary", FIELD_DEV_START, FIELD_DEV_END];
+const CHILD_FIELDS = ["summary", "status", FIELD_DEV_START, FIELD_DEV_END];
 
 const searchAll = async (
   jql: string,
@@ -93,14 +93,23 @@ const fetchSubtaskDetails = async (
   return map;
 };
 
+const statusFromIssue = (issue: JiraIssue | undefined) => ({
+  status: issue?.fields.status?.name ?? "—",
+  statusCategory: issue?.fields.status?.statusCategory?.key ?? "unknown",
+});
+
 const toSubtask = (
   key: string,
   summary: string,
+  status: string,
+  statusCategory: string,
   devStartDate: string | null,
   devEndDate: string | null,
 ): LedgerSubtask => ({
   key,
   summary,
+  status,
+  statusCategory,
   devStartDate,
   devEndDate,
   devRangeLabel: formatDevRangeLabel(devStartDate, devEndDate),
@@ -115,11 +124,13 @@ const toParent = (
   const devEndDate = issue.fields.customfield_10302 ?? null;
   const effortRaw = issue.fields.customfield_10893;
   const effort = typeof effortRaw === "number" ? effortRaw : null;
+  const { status, statusCategory } = statusFromIssue(issue);
 
   return {
     key: issue.key,
     summary: issue.fields.summary ?? "",
-    status: issue.fields.status?.name ?? "—",
+    status,
+    statusCategory,
     effort,
     devStartDate,
     devEndDate,
@@ -146,7 +157,15 @@ const fetchBoardBody = async (sprintName: string) => {
           const devEndDate = detail?.fields.customfield_10302 ?? null;
           const summary =
             detail?.fields.summary ?? subtask.fields?.summary ?? "";
-          return toSubtask(subtask.key, summary, devStartDate, devEndDate);
+          const { status, statusCategory } = statusFromIssue(detail);
+          return toSubtask(
+            subtask.key,
+            summary,
+            status,
+            statusCategory,
+            devStartDate,
+            devEndDate,
+          );
         })
         .sort((a, b) =>
           compareDateAscEmptyLast(a.devStartDate, b.devStartDate),
