@@ -52,7 +52,7 @@ const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
         params.set("sprint", String(number));
       }
       const query = params.toString();
-      router.push(query ? `/?${query}` : "/");
+      router.push(query ? `/sprint?${query}` : "/sprint");
     });
   };
 

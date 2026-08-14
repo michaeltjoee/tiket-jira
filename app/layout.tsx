@@ -16,8 +16,11 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sphinx sprint ledger",
-  description: "Personal PLAT sprint workbench for Michael Tjoe",
+  title: {
+    default: "Sphinx",
+    template: "%s · Sphinx",
+  },
+  description: "Personal PLAT workbench for Michael Tjoe",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

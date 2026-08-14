@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import SprintLedger from "@/components/SprintLedger";
@@ -7,6 +8,10 @@ import {
   JiraApiError,
   JiraConfigError,
 } from "@/lib/jira";
+
+export const metadata: Metadata = {
+  title: "Sprint ledger",
+};
 
 type Props = {
   searchParams: Promise<{ sprint?: string }>;
@@ -56,7 +61,7 @@ const parseSprintParam = (raw: string | undefined): number | undefined => {
   return n;
 };
 
-export default async function Home({ searchParams }: Props) {
+export default async function SprintPage({ searchParams }: Props) {
   if (!hasJiraCredentials()) {
     return <SetupState />;
   }

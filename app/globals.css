@@ -62,6 +62,67 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+.workbench {
+  display: grid;
+  grid-template-columns: 12.5rem minmax(0, 1fr);
+  min-height: 100dvh;
+  align-items: start;
+}
+
+.workbench_main {
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  min-height: 100dvh;
+  padding: 2.5rem 1.25rem 2rem 1.5rem;
+  border-right: 1px solid var(--rule);
+}
+
+.rail_brand {
+  margin: 0 0 1.75rem;
+  font-family: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.rail_nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rail_link {
+  position: relative;
+  display: block;
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  color: var(--mute);
+  font-size: 0.95rem;
+}
+
+.rail_link:hover {
+  color: var(--link);
+}
+
+.rail_link[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.rail_link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  bottom: 0.55em;
+  width: 2px;
+  background: var(--ink);
+}
+
 .shell {
   width: min(1080px, calc(100% - 2rem));
   margin: 0 auto;
@@ -314,6 +375,7 @@ a.summary:hover {
   line-height: 1.5;
 }
 
+.empty code,
 .setup code,
 .error_box code {
   font-family: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
@@ -328,6 +390,58 @@ a.summary:hover {
 
 .setup_list li + li {
   margin-top: 0.35rem;
+}
+
+.log_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.log_row {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: baseline;
+  padding: 0.7rem 0.15rem;
+  border-bottom: 1px dashed var(--rule);
+  animation: rise 420ms ease both;
+}
+
+.log_list li:last-child .log_row {
+  border-bottom: 0;
+}
+
+.log_env {
+  font-family: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.log_env_production {
+  color: var(--gap);
+}
+
+.log_env_preprod {
+  color: var(--link);
+}
+
+.log_env_gk {
+  color: var(--effort);
+}
+
+.log_label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.log_row:hover .log_label {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
 }
 
 .login_form {
@@ -405,12 +519,55 @@ a.summary:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .parent_block {
+  .parent_block,
+  .log_row {
     animation: none;
   }
 }
 
 @media (max-width: 760px) {
+  .workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    min-height: 0;
+    padding: 0.85rem 1rem;
+    background: var(--paper);
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rail_brand {
+    margin: 0;
+  }
+
+  .rail_nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.35rem;
+    margin-left: auto;
+  }
+
+  .rail_link {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .rail_link[aria-current="page"]::before {
+    display: none;
+  }
+
+  .rail_link[aria-current="page"] {
+    box-shadow: inset 0 -2px 0 var(--ink);
+  }
+
   .shell {
     width: min(100% - 1.25rem, 1080px);
     padding-top: 1.5rem;
