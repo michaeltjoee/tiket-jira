@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    optimizePackageImports: [
+      "@tanstack/react-query",
+      "@tanstack/react-query-persist-client",
+    ],
+  },
 };
 
 export default nextConfig;

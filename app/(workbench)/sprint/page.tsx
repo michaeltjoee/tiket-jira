@@ -1,20 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import SprintLedger from "@/components/SprintLedger";
-import {
-  hasJiraCredentials,
-  loadSprintBoard,
-  JiraApiError,
-  JiraConfigError,
-} from "@/lib/jira";
+import LedgerLoader from "@/components/LedgerLoader";
+import SprintBoard from "@/components/SprintBoard";
+import { hasJiraCredentials } from "@/lib/jira";
 
 export const metadata: Metadata = {
   title: "Sprint ledger",
-};
-
-type Props = {
-  searchParams: Promise<{ sprint?: string }>;
 };
 
 const SetupState = () => (
@@ -42,50 +34,14 @@ const SetupState = () => (
   </div>
 );
 
-const ErrorState = ({ message }: { message: string }) => (
-  <div className="shell">
-    <header className="ledger_header">
-      <div className="header_copy">
-        <p className="eyebrow">Sphinx · PLAT · Michael</p>
-        <h1 className="sprint_title">Sprint ledger</h1>
-      </div>
-    </header>
-    <p className="error_box">{message}</p>
-  </div>
-);
-
-const parseSprintParam = (raw: string | undefined): number | undefined => {
-  if (!raw) return undefined;
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) return undefined;
-  return n;
-};
-
-export default async function SprintPage({ searchParams }: Props) {
+export default function SprintPage() {
   if (!hasJiraCredentials()) {
     return <SetupState />;
   }
 
-  const params = await searchParams;
-  const sprintNumber = parseSprintParam(params.sprint);
-
-  try {
-    const data = await loadSprintBoard(sprintNumber);
-
-    return (
-      <main className="shell">
-        <Suspense fallback={null}>
-          <SprintLedger data={data} />
-        </Suspense>
-      </main>
-    );
-  } catch (error) {
-    if (error instanceof JiraConfigError || error instanceof JiraApiError) {
-      return <ErrorState message={error.message} />;
-    }
-    if (error instanceof Error) {
-      return <ErrorState message={error.message} />;
-    }
-    return <ErrorState message="Failed to load sprint board." />;
-  }
+  return (
+    <Suspense fallback={<LedgerLoader />}>
+      <SprintBoard />
+    </Suspense>
+  );
 }

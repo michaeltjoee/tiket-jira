@@ -1,3 +1,5 @@
+import "server-only";
+
 import { jiraFetch, getJiraEnv } from "./client";
 import { sphinxSprintName, toSprintRef } from "./format";
 import type { JiraSprint, SprintRef } from "./types";

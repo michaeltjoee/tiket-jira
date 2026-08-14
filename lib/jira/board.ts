@@ -1,3 +1,5 @@
+import "server-only";
+
 import { jiraFetch } from "./client";
 import {
   DEV_ASSIGNEE_ACCOUNT_ID,
@@ -8,7 +10,6 @@ import {
   browseUrl,
 } from "./constants";
 import { compareDateAscEmptyLast, formatDevRangeLabel } from "./format";
-import { getCachedSprintBoard, setCachedSprintBoard } from "./board-cache";
 import { buildRecentSprintWindow, resolveSprint } from "./sprints";
 import type {
   JiraIssue,
@@ -177,24 +178,12 @@ export const loadSprintBoard = async (
 ): Promise<SprintBoardData> => {
   const { sprint, active } = await resolveSprint(sprintNumber);
   const recentSprints = buildRecentSprintWindow(active);
-
-  const cached = getCachedSprintBoard(sprint.number);
-  if (cached) {
-    return {
-      ...cached,
-      sprint,
-      recentSprints,
-    };
-  }
-
   const body = await fetchBoardBody(sprint.name);
-  const data: SprintBoardData = {
+
+  return {
     sprint,
     recentSprints,
     fetchedAt: new Date().toISOString(),
     ...body,
   };
-
-  setCachedSprintBoard(sprint.number, data);
-  return data;
 };

@@ -518,10 +518,121 @@ a.summary:hover {
   }
 }
 
+.loader_post {
+  position: relative;
+  padding-left: 0.95rem;
+}
+
+.loader_post::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 1px;
+  background: var(--rule);
+}
+
+.loader_block {
+  animation: none;
+}
+
+.loader_row {
+  position: relative;
+  opacity: 0.32;
+  animation: loader-post 6.5s ease-in-out infinite;
+  animation-delay: calc(var(--loader-step) * 0.72s);
+}
+
+.loader_stamp {
+  position: absolute;
+  left: -0.82rem;
+  top: 0.42em;
+  width: 5px;
+  height: 5px;
+  opacity: 0;
+  animation: loader-stamp 6.5s ease-in-out infinite;
+  animation-delay: calc(var(--loader-step) * 0.72s);
+}
+
+.loader_stamp_mark {
+  display: block;
+  width: 5px;
+  height: 5px;
+  background: var(--gap);
+}
+
+.loader_key {
+  position: relative;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+}
+
+.loader_rule {
+  display: block;
+  align-self: center;
+  height: 1px;
+  background: var(--rule);
+}
+
+.loader_rule_short {
+  width: 4.6rem;
+  justify-self: start;
+}
+
+.loader_rule_date {
+  width: 5.4rem;
+  justify-self: end;
+}
+
+@keyframes loader-post {
+  0%,
+  5% {
+    opacity: 0.32;
+  }
+  11% {
+    opacity: 0.95;
+  }
+  24%,
+  100% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes loader-stamp {
+  0%,
+  4% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  8%,
+  13% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  20% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .parent_block,
-  .log_row {
+  .log_row,
+  .loader_row,
+  .loader_stamp {
     animation: none;
+  }
+
+  .loader_row {
+    opacity: 0.42;
+  }
+
+  .loader_stamp {
+    opacity: 0;
   }
 }
 
@@ -624,5 +735,18 @@ a.summary:hover {
 
   .subtask_row .key::before {
     display: none;
+  }
+
+  .loader_post {
+    padding-left: 0.7rem;
+  }
+
+  .loader_stamp {
+    left: -0.62rem;
+  }
+
+  .loader_rule_short,
+  .loader_rule_date {
+    width: 3.2rem;
   }
 }

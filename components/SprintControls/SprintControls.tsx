@@ -3,13 +3,14 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
-import { clearBoardCacheAction } from "@/lib/jira/clear-board-cache";
-import type { SprintRef } from "@/lib/jira";
+import type { SprintRef } from "@/lib/jira/types";
 
 type Props = {
   current: SprintRef;
   recentSprints: SprintRef[];
   fetchedAt: string;
+  isRefreshing: boolean;
+  onRefresh: () => void | Promise<void>;
 };
 
 const formatCachedAt = (iso: string): string => {
@@ -37,11 +38,18 @@ const formatCachedAt = (iso: string): string => {
   return `Cached ${day} ${time}`;
 };
 
-const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
+const SprintControls = ({
+  current,
+  recentSprints,
+  fetchedAt,
+  isRefreshing,
+  onRefresh,
+}: Props) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const isForcedSprint = searchParams.has("sprint");
+  const isBusy = isPending || isRefreshing;
 
   const goToSprint = (number: number | null) => {
     startTransition(() => {
@@ -57,10 +65,7 @@ const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
   };
 
   const handleRefresh = () => {
-    startTransition(async () => {
-      await clearBoardCacheAction();
-      router.refresh();
-    });
+    void onRefresh();
   };
 
   const handleSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -82,7 +87,7 @@ const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
         className="sprint_select"
         value={isForcedSprint ? String(current.number) : "active"}
         onChange={handleSelect}
-        disabled={isPending}
+        disabled={isBusy}
       >
         <option value="active">Active sprint</option>
         {recentSprints.map((sprint) => (
@@ -99,9 +104,9 @@ const SprintControls = ({ current, recentSprints, fetchedAt }: Props) => {
         type="button"
         className="refresh_button"
         onClick={handleRefresh}
-        disabled={isPending}
+        disabled={isBusy}
       >
-        {isPending ? "Loading…" : "Refresh"}
+        {isBusy ? "Loading…" : "Refresh"}
       </button>
       <span className="cache_hint" title={fetchedAt}>
         {formatCachedAt(fetchedAt)}

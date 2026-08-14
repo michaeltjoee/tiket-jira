@@ -1,9 +1,11 @@
 import SprintControls from "@/components/SprintControls";
-import { formatEffort } from "@/lib/jira";
-import type { LedgerParent, SprintBoardData } from "@/lib/jira";
+import { formatEffort } from "@/lib/jira/format";
+import type { LedgerParent, SprintBoardData } from "@/lib/jira/types";
 
 type Props = {
   data: SprintBoardData;
+  isRefreshing: boolean;
+  onRefresh: () => void | Promise<void>;
 };
 
 const GapCell = ({
@@ -91,7 +93,7 @@ const ParentBlock = ({ parent }: { parent: LedgerParent }) => {
   );
 };
 
-const SprintLedger = ({ data }: Props) => {
+const SprintLedger = ({ data, isRefreshing, onRefresh }: Props) => {
   const effortDisplay = Number.isInteger(data.totalEffort)
     ? String(data.totalEffort)
     : data.totalEffort.toFixed(1).replace(/\.0$/, "");
@@ -123,6 +125,8 @@ const SprintLedger = ({ data }: Props) => {
         current={data.sprint}
         recentSprints={data.recentSprints}
         fetchedAt={data.fetchedAt}
+        isRefreshing={isRefreshing}
+        onRefresh={onRefresh}
       />
 
       <div className="column_head" aria-hidden="true">

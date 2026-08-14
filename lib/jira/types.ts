@@ -46,6 +46,11 @@ export type SprintBoardData = {
   fetchedAt: string;
 };
 
+export type SprintBoardMeta = {
+  activeNumber: number;
+  recentSprints: SprintRef[];
+};
+
 export type JiraIssueFields = {
   summary?: string;
   status?: { name?: string };
