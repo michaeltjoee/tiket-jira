@@ -1,0 +1,382 @@
+:root {
+  --paper: #f3f0e6;
+  --paper-rule: #d7e4d2;
+  --ink: #1c2420;
+  --ink-soft: #4a5850;
+  --rule: #b7c4b4;
+  --accent: #1f5c4a;
+  --accent-soft: #dceae3;
+  --warn: #8a3b12;
+  --warn-soft: #f3e4d6;
+  --meta: #3d4a7a;
+  --meta-soft: #e4e7f2;
+  --empty: #c5cdc4;
+  --display: "Fraunces", "Palatino Linotype", Palatino, serif;
+  --body:
+    "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --mono: "IBM Plex Mono", "Source Code Pro", ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    var(--paper-rule) 31px,
+    var(--paper-rule) 32px
+  );
+  background-color: var(--paper);
+  font-family: var(--body);
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 6rem;
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.75rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(2.1rem, 5vw, 3.1rem);
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.45rem;
+  margin: 2.75rem 0 0.75rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rule);
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin: 1.75rem 0 0.5rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+.lede {
+  font-size: 1.22rem;
+  color: var(--ink-soft);
+}
+
+.key {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0.08em 0.35em;
+  border-radius: 2px;
+}
+
+.key.meta {
+  background: var(--meta-soft);
+  color: var(--meta);
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+pre {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: #1c2420;
+  color: #e8efe9;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 0 0 1.25rem;
+}
+
+.sidenote {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule);
+  padding: 0.15rem 0 0.15rem 0.9rem;
+  margin: 1.25rem 0;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.card {
+  border: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 1rem 1.05rem 0.9rem;
+}
+
+.card h3 {
+  margin: 0 0 0.4rem;
+  border: 0;
+  padding: 0;
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+.flow {
+  list-style: none;
+  margin: 1.25rem 0 1.5rem;
+  padding: 0;
+  counter-reset: step;
+}
+
+.flow li {
+  position: relative;
+  padding: 0.55rem 0 0.55rem 2.6rem;
+  border-bottom: 1px dashed var(--rule);
+  counter-increment: step;
+}
+
+.flow li:last-child {
+  border-bottom: 0;
+}
+
+.flow li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.ask {
+  margin-top: 3rem;
+  padding: 1.1rem 1.15rem;
+  background: var(--accent-soft);
+  border: 1px solid #b7d0c4;
+}
+
+.ask p {
+  margin: 0;
+}
+
+.primary-source {
+  margin: 2rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.98rem;
+}
+
+.quiz {
+  margin: 1.25rem 0 1.75rem;
+  padding: 1rem 1.05rem 1.1rem;
+  border: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.quiz-q {
+  font-family: var(--display);
+  font-size: 1.12rem;
+  margin: 0 0 0.85rem;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.quiz button {
+  font-family: var(--body);
+  font-size: 1rem;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.quiz button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.quiz button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.quiz button[data-state="right"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.quiz button[data-state="wrong"] {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+}
+
+.quiz-feedback {
+  margin: 0.8rem 0 0;
+  font-size: 0.95rem;
+}
+
+.quiz-feedback[hidden] {
+  display: none;
+}
+
+.cabinet-wrap {
+  margin: 1.25rem 0 1.75rem;
+}
+
+.cabinet {
+  border: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 1rem;
+}
+
+.cabinet-url {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  margin: 0 0 0.85rem;
+  color: var(--ink-soft);
+}
+
+.cabinet-url strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.drawers {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 0.65rem;
+}
+
+.drawer {
+  border: 1px solid var(--rule);
+  padding: 0.7rem 0.75rem 0.8rem;
+  min-height: 9.5rem;
+}
+
+.drawer h3 {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 0.55rem;
+  color: var(--ink-soft);
+}
+
+.slot {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 0.35rem 0.4rem;
+  margin-bottom: 0.35rem;
+  background: #eef1ea;
+  color: var(--empty);
+}
+
+.slot.filled {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.slot.filled.meta {
+  background: var(--meta-soft);
+  color: var(--meta);
+}
+
+.slot.hit {
+  outline: 2px solid var(--accent);
+}
+
+.cabinet-caption {
+  margin: 0.85rem 0 0;
+  font-size: 0.98rem;
+}
+
+.cabinet-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.cabinet-nav button {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #f7faf7;
+  cursor: pointer;
+}
+
+.cabinet-nav button.ghost {
+  background: transparent;
+  color: var(--accent);
+}
+
+.cabinet-nav button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.refs {
+  font-size: 0.95rem;
+}
+
+.refs ul {
+  padding-left: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .split,
+  .drawers {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

@@ -6,7 +6,9 @@ import { SPRINT_BOARD_PERSIST_KEY } from "./client";
 
 export const MAX_CACHED_BOARDS = 5;
 
+/** Board body: `["sprint-board", id]` (`"active"` or a number). See `./sprint-board.md`. */
 export const SPRINT_BOARD_QUERY_KEY = ["sprint-board"] as const;
+/** Picker singleton: `activeNumber` + `recentSprints`. Seeded by board fetches, not fetched itself. See `./sprint-board.md`. */
 export const SPRINT_BOARD_META_QUERY_KEY = ["sprint-board-meta"] as const;
 
 export const sprintBoardQueryKey = (id: number | "active") =>
@@ -57,12 +59,37 @@ export const pruneSprintBoardQueries = (queryClient: QueryClient) => {
   }
 };
 
+/**
+ * Write a fetched board into the in-memory QueryClient — not a second store.
+ * localStorage is only a snapshot of this cache (PersistQueryClientProvider);
+ * the UI always reads QueryClient.
+ *
+ * React Query only auto-caches under the key that useQuery used. On /sprint
+ * with no ?sprint=, that key is ["sprint-board", "active"] because the sprint
+ * number is unknown until this response returns — useQuery needs a key on the
+ * first paint, before queryFn resolves. This copies the same payload onto
+ * ["sprint-board", number] so later numeric navigation (or Active → that
+ * sprint) hits memory instead of refetching. After meta.activeNumber exists
+ * the hook could always use the numeric key; it currently does not, so both
+ * keys stay in play.
+ *
+ * Then prunes to MAX_CACHED_BOARDS so the persisted snapshot stays bounded.
+ */
 export const cacheSprintBoardResponse = (
   queryClient: QueryClient,
   data: SprintBoardData,
 ) => {
   queryClient.setQueryData(sprintBoardQueryKey(data.sprint.number), data);
 
+  // Seed sprint-board-meta once. Meta is not fetched on its own (enabled:
+  // false in useSprintBoard); board responses write it. activeNumber is
+  // which sprint is current for the picker's "Active sprint" option
+  // (state === "active", else first recent, else this board).
+  // recentSprints is the dropdown list. The guard means later fetches
+  // (an older sprint, a refetch of Active) do not overwrite this —
+  // switching to a closed sprint would otherwise replace "what is active"
+  // and the picker list. useSprintBoard overlays meta.recentSprints onto
+  // the current board so the picker stays stable while the board body changes.
   if (!queryClient.getQueryData(SPRINT_BOARD_META_QUERY_KEY)) {
     const activeNumber =
       data.recentSprints.find((sprint) => sprint.state === "active")?.number ??

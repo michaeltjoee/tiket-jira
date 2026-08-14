@@ -16,6 +16,9 @@ import {
 
 export const useSprintBoard = (sprintNumber: number | undefined) => {
   const queryClient = useQueryClient();
+  // True while PersistQueryClientProvider hydrates localStorage into QueryClient.
+  // Board fetch waits (enabled: !isRestoring) so a reload does not race restore
+  // and refetch; isPending stays true so the UI does not flash empty first.
   const isRestoring = useIsRestoring();
   const boardId: number | "active" = sprintNumber ?? "active";
 

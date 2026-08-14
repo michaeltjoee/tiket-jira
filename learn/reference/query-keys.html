@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reference · Sprint board query keys</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/lesson.css" />
+  </head>
+  <body>
+    <article class="page">
+      <p class="kicker">Reference · Query keys</p>
+      <h1>Sprint board cache</h1>
+      <p class="lede">
+        Compressed map of the two QueryClient entries the ledger reads. UI
+        always reads memory; localStorage is a snapshot.
+      </p>
+
+      <h2>Keys</h2>
+      <div class="split">
+        <div class="card">
+          <h3><span class="key">SPRINT_BOARD_QUERY_KEY</span></h3>
+          <p>
+            <code>["sprint-board"]</code> prefix.<br />
+            Full: <code>sprintBoardQueryKey(id)</code> →
+            <code>["sprint-board", id]</code><br />
+            <code>id</code>: <code>"active"</code> | <code>number</code><br />
+            Data: <code>SprintBoardData</code><br />
+            Source: <code>GET /api/sprint-board</code>
+          </p>
+        </div>
+        <div class="card">
+          <h3><span class="key meta">SPRINT_BOARD_META_QUERY_KEY</span></h3>
+          <p>
+            <code>["sprint-board-meta"]</code> exact, singleton.<br />
+            Data: <code>{ activeNumber, recentSprints }</code><br />
+            Source: first <code>cacheSprintBoardResponse</code> only<br />
+            Observed with <code>enabled: false</code>
+          </p>
+        </div>
+      </div>
+
+      <h2>Who writes what</h2>
+      <pre>
+fetchSprintBoardAndCache(queryClient, sprintNumber?)
+  fetchSprintBoard          → GET /api/sprint-board[?sprint=n]
+  cacheSprintBoardResponse
+    setQueryData(["sprint-board", data.sprint.number], data)
+    if meta empty:
+      setQueryData(["sprint-board-meta"], { activeNumber, recentSprints })
+    pruneSprintBoardQueries → keep last 5 board ids</pre>
+
+      <h2>What the hook observes</h2>
+      <pre>
+boardId = sprintNumber ?? "active"
+useQuery(["sprint-board-meta"], enabled: false)
+useQuery(["sprint-board", boardId],
+         queryFn: fetchSprintBoardAndCache,
+         enabled: !isRestoring)
+
+data.recentSprints = meta?.recentSprints ?? board.recentSprints</pre>
+
+      <h2>When the network runs</h2>
+      <ul class="refs">
+        <li>
+          First visit to a board id not in memory (including
+          <code>"active"</code> on a cold cache).
+        </li>
+        <li>
+          Refresh: <code>clearPersistedSprintBoard</code> cancels, drops meta,
+          deletes <code>sprint-board:v1</code>, <code>resetQueries</code> on the
+          board prefix.
+        </li>
+        <li>
+          Not on return to a filled key — <code>staleTime: Infinity</code>, no
+          refetch on mount/focus.
+        </li>
+      </ul>
+
+      <h2>Glossary</h2>
+      <p>
+        <strong>Board body.</strong> Parents, effort, timestamps for one sprint.
+        May include a <code>recentSprints</code> field from Jira; the UI must
+        not trust that field after the first seed.
+      </p>
+      <p>
+        <strong>Bootstrap key.</strong>
+        <code>["sprint-board", "active"]</code> — used when the URL has no
+        number yet. The numeric alias is written so
+        <code>?sprint=42</code> later hits memory.
+      </p>
+      <p>
+        <strong>Seed-once meta.</strong> First successful board response fills
+        the picker. Later boards do not overwrite it.
+      </p>
+      <p>
+        <strong>Overlay.</strong> Hook replaces
+        <code>board.recentSprints</code> with
+        <code>meta.recentSprints</code> before
+        <code>SprintLedger</code> renders.
+      </p>
+      <p>
+        <strong>Prefix match.</strong>
+        <code>queryKey: ["sprint-board"]</code> matches every board id, not
+        meta. See
+        <a
+          href="https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation"
+          >Query Invalidation</a
+        >.
+      </p>
+
+      <p class="primary-source">
+        Lesson:
+        <a href="../lessons/0001-two-keys-one-ledger-fetch.html"
+          >0001 · Two keys, one ledger fetch</a
+        >
+        · Contract:
+        <a href="../../lib/query/sprint-board.md">sprint-board.md</a>
+      </p>
+    </article>
+  </body>
+</html>

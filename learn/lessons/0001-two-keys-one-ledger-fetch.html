@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>0001 · Two keys, one ledger fetch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/lesson.css" />
+  </head>
+  <body>
+    <article class="page">
+      <p class="kicker">Lesson 0001 · Sprint ledger cache</p>
+      <h1>Two keys, one ledger fetch</h1>
+      <p class="lede">
+        The sprint ledger is not one React Query cache. It is a
+        <em>family of board bodies</em> plus a <em>picker singleton</em>. Both
+        are filled by the same network call. That split is the whole design.
+      </p>
+
+      <h2>The problem the split solves</h2>
+      <p>
+        Switching sprints must change the table (parents, effort, dates) without
+        changing the dropdown. If the picker were read from whichever board just
+        arrived, an older sprint would rewrite “what is active” and the list
+        under it. The in-tree contract is
+        <a href="../../lib/query/sprint-board.md"
+          ><code>lib/query/sprint-board.md</code></a
+        >.
+      </p>
+
+      <div class="split">
+        <div class="card">
+          <h3><span class="key">SPRINT_BOARD_QUERY_KEY</span></h3>
+          <p>
+            Prefix <code>["sprint-board"]</code>. Full key is
+            <code>["sprint-board", id]</code> where <code>id</code> is
+            <code>"active"</code> or a number. Holds
+            <code>SprintBoardData</code> — the ledger currently on screen.
+            Several of these can exist (capped at five).
+          </p>
+        </div>
+        <div class="card">
+          <h3><span class="key meta">SPRINT_BOARD_META_QUERY_KEY</span></h3>
+          <p>
+            Exact key <code>["sprint-board-meta"]</code>. Holds
+            <code>SprintBoardMeta</code> — <code>activeNumber</code> (what
+            “Active sprint” means) and <code>recentSprints</code> (the
+            dropdown). One entry. Never fetched on its own.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        TanStack Query treats a key as the identity of cached data. If the query
+        function depends on a variable, that variable belongs in the key —
+        otherwise two sprints would overwrite each other.
+        <a
+          href="https://tanstack.com/query/latest/docs/framework/react/guides/query-keys"
+          >Query Keys docs</a
+        >. Prefix matching then lets
+        <code>findAll({ queryKey: ["sprint-board"] })</code> see every board
+        without seeing meta.
+        <a href="https://tkdodo.eu/blog/effective-react-query-keys"
+          >TkDodo on key factories</a
+        >.
+      </p>
+
+      <h2>The fetch path</h2>
+      <ol class="flow">
+        <li>
+          <code>/sprint</code> reads <code>?sprint=</code>.
+          <code>parseSprintParam</code> yields a number or
+          <code>undefined</code>.
+        </li>
+        <li>
+          <code>useSprintBoard(sprintNumber)</code> observes two queries: meta
+          with <code>enabled: false</code>, and the board with
+          <code>sprintBoardQueryKey(sprintNumber ?? "active")</code>.
+        </li>
+        <li>
+          Board <code>queryFn</code> calls
+          <code>fetchSprintBoardAndCache</code> →
+          <code>GET /api/sprint-board</code> (optional <code>?sprint=</code>).
+        </li>
+        <li>
+          The route calls <code>loadSprintBoard</code>: resolve the Sphinx
+          sprint on the Jira board, build the recent window, fetch parents and
+          subtasks.
+        </li>
+        <li>
+          On success, <code>cacheSprintBoardResponse</code> writes the body
+          under the numeric key, seeds meta <em>only if meta is empty</em>, then
+          prunes extra boards.
+        </li>
+        <li>
+          The hook overlays <code>meta.recentSprints</code> onto the current
+          board before the UI sees it. The picker stays put; the table moves.
+        </li>
+      </ol>
+
+      <p class="sidenote">
+        Persist is a snapshot of this in-memory QueryClient, not a second store.
+        <code>useIsRestoring</code> keeps the board query disabled until
+        localStorage has been hydrated, so a reload does not race a fetch
+        against restore.
+        <a
+          href="https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient"
+          >persistQueryClient</a
+        >. Next lesson, if you want it.
+      </p>
+
+      <h2>Walk the cache</h2>
+      <p>
+        Step through a first load, a switch to an older sprint, and a return to
+        Active. Watch which drawer is written, and which is only read.
+      </p>
+
+      <div class="cabinet-wrap" data-cabinet>
+        <div class="cabinet">
+          <p class="cabinet-url" data-url></p>
+          <div class="drawers">
+            <div class="drawer">
+              <h3>Board family · SPRINT_BOARD_QUERY_KEY</h3>
+              <div class="slot" data-slot="active"></div>
+              <div class="slot" data-slot="n42"></div>
+              <div class="slot" data-slot="n41"></div>
+            </div>
+            <div class="drawer">
+              <h3>Picker · SPRINT_BOARD_META_QUERY_KEY</h3>
+              <div class="slot" data-slot="meta"></div>
+            </div>
+          </div>
+          <p class="cabinet-caption" data-caption></p>
+          <div class="cabinet-nav">
+            <button type="button" data-next>Next step</button>
+            <button type="button" class="ghost" data-reset>Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <h2>Why meta’s queryFn throws</h2>
+      <p>
+        <code>enabled: false</code> means: subscribe to whatever is already in
+        the cache; do not fetch.
+        <a
+          href="https://tanstack.com/query/latest/docs/framework/react/guides/disabling-queries"
+          >Disabling queries</a
+        >. Meta has no endpoint. Board responses <code>setQueryData</code> it.
+        The throwing <code>queryFn</code> is a tripwire — if something ever
+        enables that query, it fails loudly instead of inventing a second fetch.
+      </p>
+      <p>
+        The seed is one-shot:
+        <code>if (!queryClient.getQueryData(SPRINT_BOARD_META_QUERY_KEY))</code
+        >. Later fetches (closed sprint, refetch of Active) must not replace
+        “what is active.” Hard refresh is the exception:
+        <code>clearPersistedSprintBoard</code> removes meta so the next board
+        response can write a fresh picker.
+      </p>
+
+      <h2>Check</h2>
+      <p>Same word count on each pair. No length cue.</p>
+
+      <div
+        class="quiz"
+        data-quiz
+        data-right="Yes. Each sprint gets its own board slot; the picker is a different key."
+        data-wrong="That is meta’s job. Board keys hold one sprint’s ledger body."
+      >
+        <p class="quiz-q">
+          What lives under <span class="key">SPRINT_BOARD_QUERY_KEY</span>?
+        </p>
+        <div class="quiz-options">
+          <button type="button" data-correct="true">
+            Sprint ledger for one board
+          </button>
+          <button type="button" data-correct="false">
+            Picker list for all sprints
+          </button>
+        </div>
+        <p class="quiz-feedback" hidden></p>
+      </div>
+
+      <div
+        class="quiz"
+        data-quiz
+        data-right="Meta has no request. The first successful board response writes it."
+        data-wrong="There is no meta endpoint. enabled: false is the whole point."
+      >
+        <p class="quiz-q">Why is the meta query <code>enabled: false</code>?</p>
+        <div class="quiz-options">
+          <button type="button" data-correct="true">
+            Board fetches write meta once
+          </button>
+          <button type="button" data-correct="false">
+            Meta fetches its own endpoint
+          </button>
+        </div>
+        <p class="quiz-feedback" hidden></p>
+      </div>
+
+      <div
+        class="quiz"
+        data-quiz
+        data-right="The guard skips; overlay keeps the original dropdown on the new body."
+        data-wrong="That is exactly the bug the split exists to prevent."
+      >
+        <p class="quiz-q">
+          After you switch to an older sprint, the picker list…
+        </p>
+        <div class="quiz-options">
+          <button type="button" data-correct="true">
+            Keeps the first seeded list
+          </button>
+          <button type="button" data-correct="false">
+            Takes the older sprint list
+          </button>
+        </div>
+        <p class="quiz-feedback" hidden></p>
+      </div>
+
+      <p class="primary-source">
+        Primary source:
+        <a
+          href="https://tanstack.com/query/latest/docs/framework/react/guides/query-keys"
+          >TanStack Query — Query Keys</a
+        >
+        (then
+        <a href="https://tkdodo.eu/blog/effective-react-query-keys"
+          >Effective React Query Keys</a
+        >
+        for the prefix-factory pattern this file uses). Cheat sheet:
+        <a href="../reference/query-keys.html">Query keys reference</a>.
+      </p>
+
+      <div class="ask">
+        <p>
+          Ask follow-ups here. Anything muddy — the
+          <code>"active"</code> bootstrap key, the overlay, persist, Refresh —
+          is fair game. This agent is the teacher for this cache.
+        </p>
+      </div>
+    </article>
+    <script src="../assets/quiz.js"></script>
+    <script src="../assets/cache-cabinet.js"></script>
+  </body>
+</html>

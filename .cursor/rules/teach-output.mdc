@@ -1,0 +1,32 @@
+---
+description: Put all /teach skill output under learn/, never the repo root.
+alwaysApply: true
+---
+
+# Teach skill output lives in `learn/`
+
+When running the `/teach` skill (or creating MISSION, NOTES, RESOURCES, lessons, assets, reference, or learning-records), **root the teaching workspace at `learn/`**, not the repo root.
+
+| Teach skill default | This repo |
+| --- | --- |
+| `MISSION.md` | `learn/MISSION.md` |
+| `NOTES.md` | `learn/NOTES.md` |
+| `RESOURCES.md` | `learn/RESOURCES.md` |
+| `./lessons/*.html` | `learn/lessons/*.html` |
+| `./assets/*` | `learn/assets/*` |
+| `./reference/*.html` | `learn/reference/*.html` |
+| `./learning-records/*.md` | `learn/learning-records/*.md` |
+
+Create `learn/` (and subfolders) if they do not exist. Do not write those files at the repo root. Do not mix teaching files with app source (`lib/`, `components/`, `app/`).
+
+Relative links inside lessons stay one level up from the lesson file, e.g. `learn/lessons/0001-….html` → `../assets/lesson.css`.
+
+```
+# ❌ BAD — teach files at repo root
+lessons/0001-two-keys.html
+MISSION.md
+
+# ✅ GOOD — same files under learn/
+learn/lessons/0001-two-keys.html
+learn/MISSION.md
+```
